@@ -11,23 +11,35 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardColors
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -36,35 +48,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tsuonspot.ui.theme.TSUOnSpotTheme
 import androidx.core.graphics.toColorInt
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
-import kotlin.math.roundToInt
-import androidx.compose.ui.graphics.graphicsLayer
 
-private const val standardTSUColor: String = "#0072BC"
+public const val standardTSUColor: String = "#0072BC"
 private const val iconSize = 55
-private val standardTSUFont = FontFamily(
+public val standardTSUFont = FontFamily(
     Font(R.font.calibri, FontWeight.Normal),
     Font(R.font.calibri_bold, FontWeight.Bold)
 )
 
 class MainActivity : ComponentActivity() {
+    val markerLogic = MarkerLogic()
+    val hudBarSectionLogic = HudBarSectionLogic()
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             TSUOnSpotTheme {
+                var activeSection by remember { mutableStateOf<String?>(null) }
+
                 Box(modifier = Modifier.fillMaxSize()) {
                     DrawBackground()
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        DrawMap()
+                        markerLogic.DrawMap()
                     }
 
                     Column(
@@ -72,8 +80,13 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         GeoIcon()
-                        HudBar()
+                        HudBar(onIconClick = {section -> activeSection = section})
                     }
+
+                    hudBarSectionLogic.Section(
+                        activeSection = activeSection,
+                        onDismiss = { activeSection = null }
+                    )
                 }
             }
         }
@@ -91,18 +104,26 @@ private fun HudBarIconText(text: String) {
 }
 
 @Composable
-private fun DrawIcon(description: String, iconText: String, iconSource: Int) {
+private fun DrawIcon(
+    description: String,
+    iconText: String,
+    iconSource: Int,
+    onClick: () -> Unit
+) {
     val iconPadding = 10
-    Column(modifier = Modifier
-        .padding(iconPadding.dp, 0.dp)
-        .clip(RoundedCornerShape(10.dp))
-        .clickable(
-            interactionSource = remember { MutableInteractionSource() },
+    Column(
+        modifier = Modifier
+            .padding(iconPadding.dp, 0.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
             indication = ripple(
                 radius = 100.dp,
                 color = Color(standardTSUColor.toColorInt())
             )
-        ) { },
+        ) {
+            onClick()
+        },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -123,47 +144,14 @@ private fun DrawBackground() {
         contentScale = ContentScale.FillBounds
     )
 }
-@Composable
-private fun DrawMap() {
-    var offset by remember { mutableStateOf(Offset.Zero) }
-    var scale by remember  { mutableStateOf(3f) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectTransformGestures { _, pan, zoom, _ ->
-                    scale = (scale * zoom).coerceIn(0.5f, 5f)
-                    offset = Offset(
-                        x = offset.x + pan.x,
-                        y = offset.y + pan.y
-                    )
-                }
-            }
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.map),
-            contentDescription = "Map",
-            contentScale = ContentScale.Inside,
-            modifier = Modifier
-                .size(900.dp)
-                .offset {
-                    IntOffset(offset.x.roundToInt(),
-                              offset.y.roundToInt())
-                }
-                .graphicsLayer(
-                    scaleX = scale,
-                    scaleY = scale
-                )
-        )
-    }
-}
 
 @Composable
-private fun HudBar() {
+private fun HudBar(onIconClick: (String) -> Unit ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
-            .padding(20.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(20.dp, 0.dp)
             .size(90.dp),
         shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
@@ -173,17 +161,19 @@ private fun HudBar() {
         )
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .padding(5.dp)
         ) {
-            Row(modifier = Modifier.fillMaxSize(),
+            Row(
+                modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically) {
-
-                DrawIcon("Attractions", "Прогулка",   R.drawable.attractions_icon)
-                DrawIcon("Goto",        "Маршрут",    R.drawable.goto_icon)
-                DrawIcon("Eat",         "Где поесть", R.drawable.eat_icon)
-                DrawIcon("Account",     "Аккаунт",    R.drawable.account_icon)
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DrawIcon("Attractions", "Прогулка",   R.drawable.attractions_icon) { onIconClick("walk") }
+                DrawIcon("Goto",        "Маршрут",    R.drawable.goto_icon) { onIconClick("route") }
+                DrawIcon("Eat",         "Где поесть", R.drawable.eat_icon) { onIconClick("eat") }
+                DrawIcon("Account",     "Аккаунт",    R.drawable.account_icon) { onIconClick("account") }
             }
         }
     }
@@ -197,7 +187,7 @@ private fun GeoIcon() {
     ) {
         Card(
             modifier = Modifier
-                .padding(20.dp, 0.dp)
+                .padding(20.dp, 10.dp)
                 .size(70.dp),
             shape = RoundedCornerShape(60.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
@@ -206,7 +196,8 @@ private fun GeoIcon() {
             )
         ) {
             Box(
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
                     .clip(RoundedCornerShape(10.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
