@@ -62,14 +62,14 @@ abstract class AlgorithmAStar(
         val costFromStart = mutableMapOf(begin to 0.0)
 
         val estimatedRoute = routeCheck(from = begin, to = end)
-        val estimatedTotalCost = mutableMapOf(begin to estimatedRoute.cost)
+        val totalCost = mutableMapOf(begin to estimatedRoute.cost)
 
         while (openVertices.isNotEmpty()) {
-            val currentPos = openVertices.minBy { estimatedTotalCost.getValue(it) }!!
+            val currentPos = openVertices.minBy { totalCost.getValue(it) }!!
 
             if (currentPos == end) {
                 val path = generatePath(currentPos, cameFrom)
-                return Pair(path, estimatedTotalCost.getValue(end))
+                return Pair(path, totalCost.getValue(end))
             }
 
             openVertices.remove(currentPos)
@@ -87,8 +87,8 @@ abstract class AlgorithmAStar(
                     cameFrom[neighbour] = currentPos
                     costFromStart[neighbour] = cost
 
-                    val estimatedRemainingRouteCost = routeCheck(from = neighbour, to = end).cost
-                    estimatedTotalCost[neighbour] = cost + estimatedRemainingRouteCost
+                    val remainingRouteCost = routeCheck(from = neighbour, to = end).cost
+                    totalCost[neighbour] = cost + remainingRouteCost
                 }
             }
         }

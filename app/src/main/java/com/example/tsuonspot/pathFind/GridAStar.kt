@@ -4,7 +4,7 @@ import com.example.alghoritms.Data.GridCell
 import kotlin.math.abs
 
 class GridAStar(
-    private val grid: Array<Array<Int>> // 1 - проходимо, 0 - непроходимо
+    private val grid: Array<Array<Int>>
 ) : AlgorithmAStar(edges = buildEdges(grid)) {
 
     companion object {
@@ -15,7 +15,7 @@ class GridAStar(
 
             for (x in 0 until rows) {
                 for (y in 0 until cols) {
-                    if (grid[x][y] == 0) continue // непроходимые ячейки пропускаем
+                    if (grid[x][y] == 0) continue
 
                     val current = GridCell(x, y, true)
 

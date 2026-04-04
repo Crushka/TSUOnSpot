@@ -1,4 +1,4 @@
-package com.example.alghoritms
+package com.example.tsuonspot
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
