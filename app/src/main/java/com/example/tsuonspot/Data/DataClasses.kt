@@ -31,13 +31,18 @@ data class DataRow(val features: List<String>, val label: String)
 data class DecisionNode(
     val isLeaf: Boolean,
     val result: String? = null,
+    val classDistribution : Map<String, Int> = emptyMap(),
     val splitAttributeIndex: Int? = null,
-    val threshold: String? = null,
     val children: Map<String, DecisionNode> = emptyMap()
 )
 
 
 data class GridCell(val x: Int, val y: Int, val isWalkable: Boolean)
+
+data class GridEdge(
+    val a: GridCell,
+    val b: GridCell
+)
 
 data object CSVData {
     val data: String = """

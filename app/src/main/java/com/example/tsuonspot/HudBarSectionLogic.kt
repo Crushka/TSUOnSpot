@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
-import androidx.room.util.copy
 
 class HudBarSectionLogic {
     @OptIn(ExperimentalMaterial3Api::class)

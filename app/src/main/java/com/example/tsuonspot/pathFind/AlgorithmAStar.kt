@@ -1,16 +1,12 @@
 package com.example.alghoritms.pathFind
 
 import com.example.alghoritms.Data.GridCell
+import com.example.alghoritms.Data.GridEdge
 import kotlin.math.sqrt
 
 abstract class AlgorithmAStar(
     protected val edges: List<GridEdge>
 ) {
-    data class GridEdge(
-        val a: GridCell,
-        val b: GridCell
-    )
-
     private val GridCell.neighbors: List<GridCell>
         get() = edges
             .asSequence()
@@ -65,7 +61,7 @@ abstract class AlgorithmAStar(
         val totalCost = mutableMapOf(begin to estimatedRoute.cost)
 
         while (openVertices.isNotEmpty()) {
-            val currentPos = openVertices.minBy { totalCost.getValue(it) }!!
+            val currentPos = openVertices.minBy { totalCost.getValue(it) }
 
             if (currentPos == end) {
                 val path = generatePath(currentPos, cameFrom)
