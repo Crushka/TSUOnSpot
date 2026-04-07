@@ -58,7 +58,6 @@ public val standardTSUFont = FontFamily(
 
 class MainActivity : ComponentActivity() {
     val markerLogic = MarkerLogic()
-    val hudBarSectionLogic = HudBarSectionLogic()
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -83,7 +82,7 @@ class MainActivity : ComponentActivity() {
                         HudBar(onIconClick = {section -> activeSection = section})
                     }
 
-                    hudBarSectionLogic.Section(
+                    Section(
                         activeSection = activeSection,
                         onDismiss = { activeSection = null }
                     )
