@@ -1,44 +1,34 @@
 package com.example.alghoritms.pathFind
 
+import android.content.Context
 import com.example.alghoritms.Data.GridCell
 import kotlin.math.abs
 
 class GridAStar(
     private val grid: Array<Array<Int>>
-) : AlgorithmAStar(edges = buildEdges(grid)) {
+) : AlgorithmAStar(emptyList()) {
 
-    companion object {
-        private fun buildEdges(grid: Array<Array<Int>>): List<GridEdge> {
-            val edges = mutableListOf<GridEdge>()
-            val rows = grid.size
-            val cols = grid[0].size
+    private val rows = grid.size
+    private val cols = if (rows > 0) grid[0].size else 0
 
-            for (x in 0 until rows) {
-                for (y in 0 until cols) {
-                    if (grid[x][y] == 0) continue
+    override fun getNeighbors(cell: GridCell): List<GridCell> {
+        val neighbors = mutableListOf<GridCell>()
+        val directions = listOf(
+            Pair(1, 0), Pair(-1, 0), Pair(0, 1), Pair(0, -1)
+        )
 
-                    val current = GridCell(x, y, true)
+        for ((dx, dy) in directions) {
+            val nx = cell.x + dx
+            val ny = cell.y + dy
 
-                    val neighbors = listOf(
-                        Pair(x + 1, y),
-                        Pair(x - 1, y),
-                        Pair(x, y + 1),
-                        Pair(x, y - 1)
-                    )
-
-                    for ((nx, ny) in neighbors) {
-                        if (nx in 0 until rows && ny in 0 until cols && grid[nx][ny] == 1) {
-                            val neighbor = GridCell(nx, ny, true)
-                            edges.add(GridEdge(current, neighbor))
-                        }
-                    }
-                }
+            if (nx in 0 until rows && ny in 0 until cols && grid[nx][ny] == 1) {
+                neighbors.add(GridCell(nx, ny, true))
             }
-            return edges
         }
+        return neighbors
     }
 
-    override fun costToMoveThrough(edge: GridEdge): Double {
+    override fun costToMoveThrough(from: GridCell, to: GridCell): Double {
         return 1.0
     }
 
@@ -48,5 +38,42 @@ class GridAStar(
 
     override fun heuristic(from: GridCell, to: GridCell): Double {
         return (abs(from.x - to.x) + abs(from.y - to.y)).toDouble()
+    }
+
+    fun findNearestWalkable(x: Int, y: Int): GridCell? {
+        if (x in 0 until rows && y in 0 until cols && grid[x][y] == 1) {
+            return GridCell(x, y, true)
+        }
+
+        for (r in 1..15) {
+            for (dx in -r..r) {
+                for (dy in -r..r) {
+                    val nx = x + dx
+                    val ny = y + dy
+                    if (nx in 0 until rows && ny in 0 until cols && grid[nx][ny] == 1) {
+                        return GridCell(nx, ny, true)
+                    }
+                }
+            }
+        }
+        return null
+    }
+
+    companion object {
+        fun loadFromAssets(context: Context, fileName: String): GridAStar {
+            val matrix = mutableListOf<Array<Int>>()
+
+            context.assets.open(fileName).bufferedReader().useLines { lines ->
+                lines.forEach { line ->
+                    val row = line.trim().split(" ")
+                        .filter { it.isNotEmpty() }
+                        .map { it.toInt() }
+                        .toTypedArray()
+                    if (row.isNotEmpty()) matrix.add(row)
+                }
+            }
+
+            return GridAStar(matrix.toTypedArray())
+        }
     }
 }
