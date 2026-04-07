@@ -1,6 +1,7 @@
 package com.example.alghoritms.pathFind
 
 import com.example.alghoritms.Data.GridCell
+import com.example.alghoritms.Data.GridEdge
 import kotlin.math.sqrt
 
 abstract class AlgorithmAStar(
