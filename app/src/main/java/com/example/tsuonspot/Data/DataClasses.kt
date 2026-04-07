@@ -36,6 +36,16 @@ data class DecisionNode(
     val children: Map<String, DecisionNode> = emptyMap()
 )
 
+data class ACOdata(
+    val ants: Int = 30,
+    val iterations: Int = 40,
+    val pheromone: Double = 1.0,
+    val heuristic: Double = 2.0,
+    val evaporation: Double = 0.5,
+    val pheromoneConst: Double = 1.0,
+    val seed: Long = 42L
+)
+
 
 data class GridCell(val x: Int, val y: Int, val isWalkable: Boolean)
 
