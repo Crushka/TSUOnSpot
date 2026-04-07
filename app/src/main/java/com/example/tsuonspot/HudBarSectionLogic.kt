@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.room.util.copy
 
-class HudBarSectionLogic {
+class HudBarSectionLogic {}
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     public fun Section(activeSection: String?, onDismiss: () -> Unit) {
@@ -91,4 +91,3 @@ class HudBarSectionLogic {
             }
         }
     }
-}

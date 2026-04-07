@@ -3,52 +3,57 @@ package com.example.tsuonspot
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.foundation.gestures.detectTransformGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.IntSize
 
 class MarkerLogic {
+
     @Composable
-    public fun DrawMap() {
+    fun DrawMap() {
         var offset by remember { mutableStateOf(Offset.Zero) }
         var markerMapPos by remember { mutableStateOf<Offset?>(null) }
+        var startMarkerMapPos by remember { mutableStateOf<Offset?>(null) }
+        var isSelectingStart by remember { mutableStateOf(false) }
         var containerSizePx by remember { mutableStateOf(IntSize.Zero) }
         val markerHitRadiusDp = 30f
+        val mapScale = 3f
+        var imageSize by remember { mutableStateOf(IntSize.Zero) }
+        val pivotOffsetX = imageSize.width * (mapScale - 1) / 2f
+        val pivotOffsetY = imageSize.height * (mapScale - 1) / 2f
+        val density = LocalDensity.current.density
 
         Box(
             modifier = Modifier
@@ -64,22 +69,31 @@ class MarkerLogic {
                         )
                     }
                 }
-                .pointerInput(Unit) {
+                .pointerInput(isSelectingStart) {
                     detectTapGestures(
                         onTap = { tapOffset ->
-                            val mapX = tapOffset.x - offset.x
-                            val mapY = tapOffset.y - offset.y
-                            markerMapPos = Offset(mapX, mapY)
+                            val mapX = (tapOffset.x - offset.x + pivotOffsetX) / mapScale
+                            val mapY = (tapOffset.y - offset.y + pivotOffsetY) / mapScale
+                            if (isSelectingStart) {
+                                startMarkerMapPos = Offset(mapX, mapY)
+                                isSelectingStart = false
+                            } else {
+                                markerMapPos = Offset(mapX, mapY)
+                                startMarkerMapPos = null
+                            }
                         },
                         onDoubleTap = { tapOffset ->
-                            markerMapPos?.let { mapPos ->
-                                val markerScreenX = offset.x + mapPos.x
-                                val markerScreenY = offset.y + mapPos.y
-                                val hitRadiusPx = markerHitRadiusDp * density
-                                val dx = tapOffset.x - markerScreenX
-                                val dy = tapOffset.y - markerScreenY
-                                if (dx * dx + dy * dy <= hitRadiusPx * hitRadiusPx) {
-                                    markerMapPos = null
+                            if (!isSelectingStart) {
+                                markerMapPos?.let { mapPos ->
+                                    val markerScreenX = offset.x + mapPos.x * mapScale - pivotOffsetX
+                                    val markerScreenY = offset.y + mapPos.y * mapScale - pivotOffsetY
+                                    val hitRadiusPx = markerHitRadiusDp * density
+                                    val dx = tapOffset.x - markerScreenX
+                                    val dy = tapOffset.y - markerScreenY
+                                    if (dx * dx + dy * dy <= hitRadiusPx * hitRadiusPx) {
+                                        markerMapPos = null
+                                        startMarkerMapPos = null
+                                    }
                                 }
                             }
                         }
@@ -91,24 +105,40 @@ class MarkerLogic {
                 contentDescription = "Map",
                 modifier = Modifier
                     .offset {
-                        IntOffset(offset.x.roundToInt(),
-                                  offset.y.roundToInt())
+                        IntOffset(
+                            offset.x.roundToInt(),
+                            offset.y.roundToInt()
+                        )
                     }
+                    .onGloballyPositioned { imageSize = it.size }
                     .graphicsLayer(
-                        scaleX = 3f,
-                        scaleY = 3f,
+                        scaleX = mapScale,
+                        scaleY = mapScale,
                     )
             )
 
             markerMapPos?.let { mapPos ->
-                val screenX = offset.x + mapPos.x
-                val screenY = offset.y + mapPos.y
+                val screenX = offset.x + mapPos.x * mapScale - pivotOffsetX
+                val screenY = offset.y + mapPos.y * mapScale - pivotOffsetY
 
                 MarkerOverlay(
                     screenPos = Offset(screenX, screenY),
                     containerWidthPx = containerSizePx.width,
-                    onRouteClick = { /* МАРШРУТ ТУТ */}
+                    onRouteClick = {
+                        isSelectingStart = true
+                    }
                 )
+            }
+
+            startMarkerMapPos?.let { mapPos ->
+                val screenX = offset.x + mapPos.x * mapScale - pivotOffsetX
+                val screenY = offset.y + mapPos.y * mapScale - pivotOffsetY
+
+                StartMarkerOverlay(screenPos = Offset(screenX, screenY))
+            }
+
+            if (isSelectingStart) {
+                SelectStartHint()
             }
 
             markerMapPos?.let { mapPos ->
@@ -177,6 +207,51 @@ class MarkerLogic {
                         color = Color(standardTSUColor.toColorInt())
                     )
                 }
+            }
+        }
+    }
+
+    @Composable
+    private fun StartMarkerOverlay(screenPos: Offset) {
+        Box(
+            modifier = Modifier.offset {
+                IntOffset(
+                    x = (screenPos.x - 15.dp.toPx()).roundToInt(),
+                    y = (screenPos.y - 15.dp.toPx()).roundToInt()
+                )
+            }
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.start_point_icon),
+                contentDescription = "Точка старта",
+                modifier = Modifier.size(30.dp)
+            )
+        }
+    }
+
+    @Composable
+    private fun SelectStartHint() {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(top = 50.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            Card(
+                shape = RoundedCornerShape(14.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Text(
+                    text = "Выберите место,\nоткуда построить маршрут",
+                    fontFamily = standardTSUFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = Color(standardTSUColor.toColorInt()),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                )
             }
         }
     }
