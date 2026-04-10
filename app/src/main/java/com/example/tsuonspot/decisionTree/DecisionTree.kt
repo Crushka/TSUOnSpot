@@ -62,12 +62,15 @@ class DecisionTree {
         val labels = data.map { it.label}.distinct()
 
         if(labels.size == 1) {
-            return DecisionNode(isLeaf = true, result = labels.first())
+            val distribute = data.groupingBy { it.label }.eachCount()
+            return DecisionNode(isLeaf = true, result = labels.first(), classDistribution = distribute)
         }
 
         if(attributeIndices.isEmpty() || data.isEmpty()) {
-            val majority = data.groupingBy { it.label }.eachCount().maxByOrNull { it.value }?.key
-            return DecisionNode(isLeaf = true, result = majority?: "Unknown")
+            val distribute = data.groupingBy { it.label }.eachCount()
+            val majority = distribute.maxByOrNull { it.value }?.key ?: "Unknown"
+            return DecisionNode(isLeaf = true, result = majority, classDistribution = distribute)
+
         }
 
         val bestAttrIndex = selectBestAttr(data, attributeIndices)?: attributeIndices.first()
@@ -93,16 +96,19 @@ class DecisionTree {
         )
     }
 
-    fun predict(features: List<String>) : Pair<String?, List<String>> {
+    fun predict(features: List<String>) : Pair<Map<String, Double>, List<String>> {
         val path = mutableListOf<String>()
         var currentNode = root
         val normalizedFeatures = features.map { it.trim().lowercase() }
 
         while (currentNode != null) {
             if(currentNode.isLeaf) {
-                path.add("Результат: ${currentNode.result}")
-                return Pair(currentNode.result, path)
-                break
+                val total = currentNode.classDistribution.values.sum().toDouble()
+                val chances = currentNode.classDistribution.mapValues { (temp, count) ->
+                    count / total
+                }
+                path.add("Итоговое распределение: ${chances.map {(name, value) -> "$name: ${(value*100).toInt()}%"}}")
+                return Pair(chances, path)
             }
             else {
                 val attrIndex = currentNode.splitAttributeIndex!!
@@ -114,10 +120,10 @@ class DecisionTree {
                 currentNode = currentNode.children[inputValue]
                 if (currentNode == null) {
                     path.add("Тупик")
-                    return Pair("Нет рекомендации", path)
+                    return Pair(emptyMap(), path)
                 }
             }
         }
-        return Pair("Ошибка", path)
+        return Pair(emptyMap(), path)
     }
 }

@@ -2,6 +2,7 @@ package com.example.alghoritms.pathFind
 
 import android.content.Context
 import com.example.alghoritms.Data.GridCell
+import com.example.alghoritms.Data.GridEdge
 import kotlin.math.abs
 
 class GridAStar(
