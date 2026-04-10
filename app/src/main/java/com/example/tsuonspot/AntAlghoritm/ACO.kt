@@ -1,10 +1,14 @@
 package com.example.tsuonspot.AntAlghoritm
 
 import com.example.alghoritms.Data.ACOdata
+import com.example.alghoritms.Data.GridCell
+import com.example.alghoritms.pathFind.GridAStar
 import kotlin.math.pow
 import kotlin.random.Random
 
-class ACO(private val nodes: Int, private val dist: Array<DoubleArray>, private val data: ACOdata = ACOdata()) {
+class ACO(private val nodes: Int,
+          private val dist: Array<DoubleArray>,
+          private val data: ACOdata = ACOdata(), ) {
     private val pheromones = Array(nodes) { DoubleArray(nodes) { 1.0 } }
     private val heuristic = Array(nodes) {i ->
         DoubleArray(nodes) {j -> if(dist[i][j] > 0) 1.0 / dist[i][j] else 0.0}
@@ -34,7 +38,7 @@ class ACO(private val nodes: Int, private val dist: Array<DoubleArray>, private 
             val rand = random.nextDouble() * total
             var cumSum = 0.0
             for(next in 0 until nodes) {
-                if(visited[next]) {
+                if(!visited[next]) {
                     cumSum += chances[next]
                     if(cumSum >= rand) {
                         visited[next] = true

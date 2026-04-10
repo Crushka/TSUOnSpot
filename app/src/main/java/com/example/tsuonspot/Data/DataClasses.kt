@@ -46,6 +46,11 @@ data class ACOdata(
     val seed: Long = 42L
 )
 
+data class RouteResult(
+    val orderedPoints: List<GridCell>,
+    val fullPath: List<GridCell>,
+    val totalDistance: Double
+)
 
 data class GridCell(val x: Int, val y: Int, val isWalkable: Boolean)
 
