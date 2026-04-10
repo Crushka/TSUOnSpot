@@ -1,246 +1,369 @@
 package com.example.tsuonspot
 
+import android.app.Application
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.ripple
-import androidx.compose.runtime.*
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.graphics.toColorInt
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.math.roundToInt
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alghoritms.Data.GridCell
 import com.example.alghoritms.pathFind.GridAStar
-import kotlin.math.roundToInt
 
-class MarkerLogic {
+data class MapCamera(
+    val scale: Float,
+    val offsetX: Float,
+    val offsetY: Float,
+    val cellSize: Float
+)
 
-    private val IMG_WIDTH_PX = 1345f
-    private val IMG_HEIGHT_PX = 933f
-    private val MATRIX_WIDTH = 722f
-    private val MATRIX_HEIGHT = 501f
+val LocalMapCamera = compositionLocalOf { MapCamera(0f, 0f, 0f, 0f) }
 
-    private val DISPLAY_SCALE = 3.0f
-    private val SCALE_X = IMG_WIDTH_PX / MATRIX_WIDTH
-    private val SCALE_Y = IMG_HEIGHT_PX / MATRIX_HEIGHT
+internal fun MapCamera.toScreenX(gridX: Int) = (gridX * scale * cellSize + offsetX).roundToInt()
+internal fun MapCamera.toScreenY(gridY: Int) = (gridY * scale * cellSize + offsetY).roundToInt()
 
-    @Composable
-    fun DrawMap() {
-        val correctionX = 155f * DISPLAY_SCALE
-        val correctionY = 5f * DISPLAY_SCALE
-        val context = LocalContext.current
-        val density = LocalDensity.current
-        val densityValue = density.density
+data class MapState(
+    val scale: Float = 3.5f,
+    val offsetX: Float = 0f,
+    val offsetY: Float = 0f,
+    val startPoint: Pair<Int, Int>? = null,
+    val endPoint: Pair<Int, Int>? = null,
+    val pathPoints: List<GridCell>? = null,
+    val pathError: Boolean = false
+)
 
-        val mapWidthDp = (IMG_WIDTH_PX / densityValue * DISPLAY_SCALE).dp
-        val mapHeightDp = (IMG_HEIGHT_PX / densityValue * DISPLAY_SCALE).dp
+class MapViewModel(application: Application) : AndroidViewModel(application) {
+    private val _cellSize = MutableStateFlow(3f)
+    val cellSize: StateFlow<Float> = _cellSize.asStateFlow()
+    fun updateCellSize(newCellSize: Float) {
+        if (newCellSize > 0f) _cellSize.value = newCellSize
+    }
+    private val panSpeed: Float = 1f
+    private val minScale = 1.4f
+    private val maxScale = 10f
+    private val _mapState = MutableStateFlow(MapState())
+    val mapState: StateFlow<MapState> = _mapState.asStateFlow()
+    private var gridAStar: GridAStar? = null
+    private val _isMatrixLoading = MutableStateFlow(true)
+    val isMatrixLoading: StateFlow<Boolean> = _isMatrixLoading.asStateFlow()
 
-        val aStar = remember { GridAStar.loadFromAssets(context, "output_matrix.txt") }
+    init {
+        loadMatrix()
+    }
 
-        var offset by remember { mutableStateOf(Offset.Zero) }
-        var markerMapPos by remember { mutableStateOf<Offset?>(null) }
-        var startMarkerMapPos by remember { mutableStateOf<Offset?>(null) }
-        var isSelectingStart by remember { mutableStateOf(false) }
-        var pathResult by remember { mutableStateOf<List<GridCell>>(emptyList()) }
-
-        val hitRadiusPx = with(density) { 40.dp.toPx() * DISPLAY_SCALE }
-
-        LaunchedEffect(markerMapPos, startMarkerMapPos) {
-            if (markerMapPos != null && startMarkerMapPos != null) {
-                val startRow = (startMarkerMapPos!!.y / SCALE_Y).toInt()
-                val startCol = (startMarkerMapPos!!.x / SCALE_X).toInt()
-                val endRow = (markerMapPos!!.y / SCALE_Y).toInt()
-                val endCol = (markerMapPos!!.x / SCALE_X).toInt()
-
-                val startCell = aStar.findNearestWalkable(startRow, startCol)
-                val endCell = aStar.findNearestWalkable(endRow, endCol)
-
-                if (startCell != null && endCell != null) {
-                    try {
-                        val (path, _) = aStar.findPath(startCell, endCell)
-                        pathResult = path
-                    } catch (e: Exception) { pathResult = emptyList() }
-                }
-            } else { pathResult = emptyList() }
+    fun clearMap() {
+        _mapState.update {
+            it.copy(
+                startPoint = null,
+                endPoint = null,
+                pathPoints = null,
+                pathError = false
+            )
         }
+    }
+    fun onMapDoubleTap(x: Float, y: Float) {
+        val current = _mapState.value
+        val gridX = ((x - current.offsetX) / (current.scale * _cellSize.value)).toInt()
+        val gridY = ((y - current.offsetY) / (current.scale * _cellSize.value)).toInt()
 
+        val hitRadius = 20
+
+        val clickedOnStart = current.startPoint?.let {
+            kotlin.math.abs(it.first - gridX) < hitRadius && kotlin.math.abs(it.second - gridY) < hitRadius
+        } ?: false
+
+        val clickedOnEnd = current.endPoint?.let {
+            kotlin.math.abs(it.first - gridX) < hitRadius && kotlin.math.abs(it.second - gridY) < hitRadius
+        } ?: false
+
+        if (clickedOnStart || clickedOnEnd) {
+            clearMap()
+        }
+    }
+    private fun loadMatrix() {
+        viewModelScope.launch {
+            gridAStar = withContext(Dispatchers.IO) {
+                try {
+                    GridAStar.loadFromAssets(getApplication(), "output_matrix.txt")
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    null
+                }
+            }
+            _isMatrixLoading.value = false
+        }
+    }
+
+    fun onMapClick(x: Float, y: Float) {
+        val current = _mapState.value
+        val gridX = ((x - current.offsetX) / (current.scale * _cellSize.value)).toInt()
+        val gridY = ((y - current.offsetY) / (current.scale * _cellSize.value)).toInt()
+        val clickedPoint = Pair(gridX, gridY)
+
+        when {
+            current.endPoint == null -> {
+                _mapState.update { it.copy(endPoint = clickedPoint, pathPoints = null, pathError = false) }
+            }
+            current.startPoint == null -> {
+                _mapState.update { it.copy(startPoint = clickedPoint, pathPoints = null, pathError = false) }
+                findPath(clickedPoint, current.endPoint)
+            }
+            else -> {
+                _mapState.update {
+                    it.copy(
+                        endPoint = clickedPoint,
+                        startPoint = null,
+                        pathPoints = null,
+                        pathError = false
+                    )
+                }
+            }
+        }
+    }
+
+    private fun findPath(from: Pair<Int, Int>, to: Pair<Int, Int>) {
+        val astar = gridAStar ?: return
+
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.Default) {
+                try {
+                    val startCell = astar.findNearestWalkable(from.first, from.second)
+                    val endCell = astar.findNearestWalkable(to.first, to.second)
+
+                    if (startCell == null || endCell == null) return@withContext null
+
+                    val (path, _) = astar.findPath(startCell, endCell)
+                    path
+                } catch (e: IllegalArgumentException) {
+                    null
+                }
+            }
+
+            _mapState.update { current ->
+                if (result != null) {
+                    current.copy(pathPoints = result, pathError = false)
+                } else {
+                    current.copy(pathPoints = null, pathError = true)
+                }
+            }
+        }
+    }
+
+    fun onTransform(panX: Float, panY: Float, zoomChange: Float) {
+        _mapState.update { current ->
+            val newScale = (current.scale * zoomChange).coerceIn(minScale, maxScale)
+            current.copy(
+                scale = newScale,
+                offsetX = current.offsetX + panX * panSpeed,
+                offsetY = current.offsetY + panY * panSpeed
+            )
+        }
+    }
+}
+
+@Composable
+fun DrawDebugDiagonal(camera: MapCamera) {
+    val points = (0..100).map { i ->
+        GridCell(x = (722 * i / 100), y = (501 * i / 100), isWalkable = true)
+    }
+    DrawWay(pathPoints = points)
+}
+
+@Composable
+fun MapScreen(
+    vm: MapViewModel = viewModel()
+) {
+    val state = vm.mapState.collectAsState().value
+    val cellSize by vm.cellSize.collectAsState()
+    val camera = MapCamera(
+        scale = state.scale,
+        offsetX = state.offsetX,
+        offsetY = state.offsetY,
+        cellSize = cellSize
+    )
+
+    CompositionLocalProvider(LocalMapCamera provides camera) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(Unit) {
-                    detectDragGestures { _, dragAmount ->
-                        offset += dragAmount
-                    }
+                .onSizeChanged {size ->
+                    vm.updateCellSize(size.width.toFloat() / 722f)
                 }
-                .pointerInput(isSelectingStart) {
+                .pointerInput(Unit) {
                     detectTapGestures(
-                        onTap = { tapOffset ->
-                            val mapX = ((tapOffset.x - offset.x) / DISPLAY_SCALE) + correctionX
-                            val mapY = ((tapOffset.y - offset.y) / DISPLAY_SCALE) + correctionY
-
-                            if (isSelectingStart) {
-                                startMarkerMapPos = Offset(mapX, mapY)
-                                isSelectingStart = false
-                            } else {
-                                markerMapPos = Offset(mapX, mapY)
-                                startMarkerMapPos = null
-                            }
+                        onTap = { offset ->
+                            vm.onMapClick(offset.x, offset.y)
                         },
-                        onDoubleTap = { tapOffset ->
-                            val mapX = ((tapOffset.x - offset.x) / DISPLAY_SCALE) + correctionX
-                            val mapY = ((tapOffset.y - offset.y) / DISPLAY_SCALE) + correctionY
-                            val clickPos = Offset(mapX, mapY)
-                            val distToTarget = markerMapPos?.let { (clickPos - it).getDistance() } ?: Float.MAX_VALUE
-                            val distToStart = startMarkerMapPos?.let { (clickPos - it).getDistance() } ?: Float.MAX_VALUE
-
-                            if (distToTarget < hitRadiusPx || distToStart < hitRadiusPx) {
-                                markerMapPos = null
-                                startMarkerMapPos = null
-                                pathResult = emptyList()
-                            }
+                        onDoubleTap = { offset ->
+                            vm.onMapDoubleTap(offset.x, offset.y)
                         }
                     )
                 }
-        ) {
-            Box(
-                modifier = Modifier
-                    .offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt()) }
-                    .requiredSize(mapWidthDp, mapHeightDp)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.map),
-                    contentDescription = null,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.FillBounds
-                )
-
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    pathResult.forEach { cell ->
-                        drawCircle(
-                            color = Color(standardTSUColor.toColorInt()),
-                            radius = 3f * DISPLAY_SCALE,
-                            center = Offset(
-                                cell.y * SCALE_X * DISPLAY_SCALE,
-                                cell.x * SCALE_Y * DISPLAY_SCALE)
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        vm.onTransform(
+                            panX = pan.x,
+                            panY = pan.y,
+                            zoomChange = zoom
                         )
                     }
                 }
-
-                markerMapPos?.let { pos ->
-                    Box(modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (pos.x * DISPLAY_SCALE - 20.dp.toPx()).roundToInt(),
-                                (pos.y * DISPLAY_SCALE - 40.dp.toPx()).roundToInt()
-                            )
-                        }
-                    ) {
-                        Image(painter = painterResource(id = R.drawable.marker_icon), null, modifier = Modifier.size(40.dp))
-                    }
-                    MarkerRouteButton(pos) { isSelectingStart = true }
-                }
-
-                startMarkerMapPos?.let { pos ->
-                    Box(modifier = Modifier
-                        .offset {
-                            IntOffset(
-                                (pos.x * DISPLAY_SCALE - 15.dp.toPx()).roundToInt(),
-                                (pos.y * DISPLAY_SCALE - 15.dp.toPx()).roundToInt()
-                            )
-                        }
-                    ) {
-                        Image(painter = painterResource(id = R.drawable.start_point_icon), null, modifier = Modifier.size(30.dp))
-                    }
-                }
-            }
-
-            if (isSelectingStart) SelectStartHint()
-            markerMapPos?.let { MapCoordinatesLabel(it) }
-        }
-    }
-
-    @Composable
-    private fun MarkerRouteButton(mapPos: Offset, onRouteClick: () -> Unit) {
-        Box(modifier = Modifier.offset { IntOffset((
-                mapPos.x * DISPLAY_SCALE + 15.dp.toPx()).roundToInt(),
-            (mapPos.y * DISPLAY_SCALE - 70.dp.toPx()).roundToInt()
-        ) }) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Box(modifier = Modifier.clickable(onClick = onRouteClick).padding(horizontal = 14.dp, vertical = 8.dp)) {
-                    Text("Построить маршрут", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color(standardTSUColor.toColorInt()))
-                }
-            }
-        }
-    }
-
-    @Composable
-    private fun SelectStartHint() {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(top = 60.dp),
-            contentAlignment = Alignment.TopCenter) {
-            Card(
-                shape = RoundedCornerShape(14.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = Color.White,
-                    contentColor = Color(standardTSUColor.toColorInt())
-                )
-            ) {
-                Text(
-                    "Выберите место,\nоткуда построить маршрут",
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(20.dp),
-                    fontFamily = standardTSUFont,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-
-    @Composable
-    private fun MapCoordinatesLabel(mapPos: Offset) {
-        Card(
-            modifier = Modifier
-                .padding(start = 16.dp)
-                .statusBarsPadding(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White,
-                contentColor = Color(standardTSUColor.toColorInt())
-            )
         ) {
-            Text(
-                "x: ${mapPos.x.roundToInt()}  y: ${mapPos.y.roundToInt()}",
-                modifier = Modifier.padding(12.dp),
-                fontFamily = standardTSUFont,
-                fontWeight = FontWeight.Bold
+            DrawMap()
+            DrawWay(pathPoints = state.pathPoints)
+            DrawToMarker(endPoint = state.endPoint)
+            DrawFromMarker(startPoint = state.startPoint)
+
+            DistanceOverlay(
+                startPoint = state.startPoint,
+                endPoint = state.endPoint,
+                pathPoints = state.pathPoints,
+                cellSize = cellSize
             )
         }
+    }
+}
+
+@Composable
+fun DrawMap() {
+    val camera = LocalMapCamera.current
+
+    Image(
+        painter = painterResource(R.drawable.map),
+        contentDescription = "Map",
+        modifier = Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                scaleX = camera.scale
+                scaleY = camera.scale
+                translationX = camera.offsetX
+                translationY = camera.offsetY
+                transformOrigin = TransformOrigin(0f, 0f)
+            },
+        alignment = Alignment.TopStart
+    )
+}
+
+@Composable
+fun DrawWay(
+    pathPoints: List<GridCell>?,
+    pathColor: Color = Color(0xFF0072BC),
+    strokeWidthDp: Float = 4f
+) {
+    if (pathPoints == null || pathPoints.size < 2) return
+
+    val camera = LocalMapCamera.current
+    val density = LocalDensity.current
+    val strokeWidthPx = with(density) { strokeWidthDp.dp.toPx() }
+
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val transformed = pathPoints.map { cell ->
+            Offset(
+                x = (cell.x * camera.scale * camera.cellSize) + camera.offsetX,
+                y = (cell.y * camera.scale * camera.cellSize) + camera.offsetY
+            )
+        }
+
+        val path = Path().apply {
+            transformed.forEachIndexed { i, offset ->
+                if (i == 0) moveTo(offset.x, offset.y)
+                else lineTo(offset.x, offset.y)
+            }
+        }
+
+        drawPath(
+            path = path,
+            color = pathColor.copy(alpha = 0.85f),
+            style = Stroke(
+                width = strokeWidthPx,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+    }
+}
+
+@Composable
+fun DrawToMarker(endPoint: Pair<Int, Int>?) {
+    if (endPoint == null) return
+    val camera = LocalMapCamera.current
+    var size by remember { mutableStateOf(IntSize.Zero) }
+
+    Box(
+        modifier = Modifier
+            .offset {
+                IntOffset(
+                    x = camera.toScreenX(endPoint.first) - size.width / 2,
+                    y = (camera.toScreenY(endPoint.second) - size.height / 1.2f).roundToInt()
+                )
+            }
+            .onSizeChanged { size = it }
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.marker_icon),
+            contentDescription = null,
+            modifier = Modifier.graphicsLayer(scaleX = 0.8f, scaleY = 0.8f)
+        )
+    }
+}
+
+@Composable
+fun DrawFromMarker(startPoint: Pair<Int, Int>?) {
+    if (startPoint == null) return
+    val camera = LocalMapCamera.current
+    var size by remember { mutableStateOf(IntSize.Zero) }
+
+    Box(
+        modifier = Modifier
+            .offset {
+                IntOffset(
+                    x = camera.toScreenX(startPoint.first) - size.width / 2,
+                    y = camera.toScreenY(startPoint.second) - size.height / 2
+                )
+            }
+            .onSizeChanged { size = it }
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.start_point_icon),
+            contentDescription = null,
+            modifier = Modifier.graphicsLayer(scaleX = 1f, scaleY = 1f)
+        )
     }
 }

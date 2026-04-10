@@ -21,14 +21,14 @@ class GridAStar(
             val nx = cell.x + dx
             val ny = cell.y + dy
 
-            if (nx in 0 until rows && ny in 0 until cols && grid[nx][ny] == 1) {
+            if (ny in 0 until rows && nx in 0 until grid[ny].size && grid[ny][nx] == 1) {
                 neighbors.add(GridCell(nx, ny, true))
             }
         }
         return neighbors
     }
 
-    override fun costToMoveThrough(from: GridCell, to: GridCell): Double {
+    override fun costToMoveThrough(edge: GridEdge): Double {
         return 1.0
     }
 
@@ -41,16 +41,16 @@ class GridAStar(
     }
 
     fun findNearestWalkable(x: Int, y: Int): GridCell? {
-        if (x in 0 until rows && y in 0 until cols && grid[x][y] == 1) {
+        if (y in 0 until rows && x in 0 until grid[y].size && grid[y][x] == 1) {
             return GridCell(x, y, true)
         }
 
-        for (r in 1..15) {
+        for (r in 1..10) {
             for (dx in -r..r) {
                 for (dy in -r..r) {
                     val nx = x + dx
                     val ny = y + dy
-                    if (nx in 0 until rows && ny in 0 until cols && grid[nx][ny] == 1) {
+                    if (ny in 0 until rows && nx in 0 until grid[ny].size && grid[ny][nx] == 1) {
                         return GridCell(nx, ny, true)
                     }
                 }
@@ -62,7 +62,6 @@ class GridAStar(
     companion object {
         fun loadFromAssets(context: Context, fileName: String): GridAStar {
             val matrix = mutableListOf<Array<Int>>()
-
             context.assets.open(fileName).bufferedReader().useLines { lines ->
                 lines.forEach { line ->
                     val row = line.trim().split(" ")
@@ -72,7 +71,6 @@ class GridAStar(
                     if (row.isNotEmpty()) matrix.add(row)
                 }
             }
-
             return GridAStar(matrix.toTypedArray())
         }
     }
