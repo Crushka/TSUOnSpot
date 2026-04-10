@@ -12,18 +12,29 @@ abstract class AlgorithmAStar(
         val b: GridCell
     )
 
-    open fun getNeighbors(cell: GridCell): List<GridCell> {
+    protected open fun getNeighbors(cell: GridCell): List<GridCell> {
         return edges
             .asSequence()
             .filter { it.a == cell || it.b == cell }
-            .map { if (it.a == cell) it.b else it.a }
+            .map { listOf(it.a, it.b) }
+            .flatten()
+            .filterNot { it == cell }
             .distinct()
             .toList()
     }
 
-    abstract fun costToMoveThrough(from: GridCell, to: GridCell): Double
+    private val GridEdge.edgeCost: Double
+        get() = costToMoveThrough(this)
 
-    abstract fun createEdge(from: GridCell, to: GridCell): GridEdge
+    private fun findRoute(from: GridCell, to: GridCell): GridEdge? {
+        return edges.find {
+            (it.a == from && it.b == to) || (it.a == to && it.b == from)
+        }
+    }
+
+    private fun routeCheck(from: GridCell, to: GridCell): GridEdge {
+        return findRoute(from, to) ?: createEdge(from, to)
+    }
 
     protected open fun heuristic(from: GridCell, to: GridCell): Double {
         val dx = (from.x - to.x).toDouble()
@@ -38,44 +49,48 @@ abstract class AlgorithmAStar(
             current = cameFrom.getValue(current)
             path.add(0, current)
         }
-        return path
+        return path.toList()
     }
+
+    abstract fun costToMoveThrough(edge: GridEdge): Double
+    abstract fun createEdge(from: GridCell, to: GridCell): GridEdge
 
     fun findPath(begin: GridCell, end: GridCell): Pair<List<GridCell>, Double> {
         val cameFrom = mutableMapOf<GridCell, GridCell>()
         val openVertices = mutableSetOf(begin)
         val closedVertices = mutableSetOf<GridCell>()
         val costFromStart = mutableMapOf(begin to 0.0)
-        val totalCost = mutableMapOf(begin to heuristic(begin, end))
+
+        val initialEdge = routeCheck(begin, end)
+        val totalCost = mutableMapOf(begin to initialEdge.edgeCost)
 
         while (openVertices.isNotEmpty()) {
-            val currentPos = openVertices.minBy { totalCost.getOrDefault(it, Double.MAX_VALUE) }!!
+            val currentPos = openVertices.minByOrNull { totalCost.getOrDefault(it, Double.MAX_VALUE) }!!
 
-            if (currentPos.x == end.x && currentPos.y == end.y) {
+            if (currentPos == end) {
                 val path = generatePath(currentPos, cameFrom)
-                return Pair(path, costFromStart[currentPos] ?: 0.0)
+                return Pair(path, costFromStart.getValue(end))
             }
 
             openVertices.remove(currentPos)
             closedVertices.add(currentPos)
 
-            for (neighbour in getNeighbors(currentPos)) {
-                if (neighbour in closedVertices) continue
+            (getNeighbors(currentPos) - closedVertices).forEach { neighbour ->
+                val edge = routeCheck(currentPos, neighbour)
+                val routeCost = costToMoveThrough(edge)
+                val newScore = costFromStart.getValue(currentPos) + routeCost
 
-                val moveCost = costToMoveThrough(currentPos, neighbour)
-                val tentativeCost = (costFromStart[currentPos] ?: 0.0) + moveCost
-
-                if (tentativeCost < (costFromStart[neighbour] ?: Double.MAX_VALUE)) {
+                if (newScore < costFromStart.getOrDefault(neighbour, Double.MAX_VALUE)) {
                     cameFrom[neighbour] = currentPos
-                    costFromStart[neighbour] = tentativeCost
-                    totalCost[neighbour] = tentativeCost + heuristic(neighbour, end)
+                    costFromStart[neighbour] = newScore
+                    totalCost[neighbour] = newScore + heuristic(neighbour, end)
 
-                    if (neighbour !in openVertices) {
+                    if (!openVertices.contains(neighbour)) {
                         openVertices.add(neighbour)
                     }
                 }
             }
         }
-        throw IllegalArgumentException("Нет пути от $begin до $end")
+        throw IllegalArgumentException("Путь не найден")
     }
 }
