@@ -39,8 +39,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.tsuonspot.ui.theme.TSUOnSpotTheme
 import androidx.core.graphics.toColorInt
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.tsuonspot.ui.theme.TSUOnSpotTheme
 
 public const val standardTSUColor: String = "#0072BC"
 private const val iconSize = 55
@@ -58,12 +59,14 @@ class MainActivity : ComponentActivity() {
             TSUOnSpotTheme {
                 var activeSection by remember { mutableStateOf<String?>(null) }
 
+                val mapViewModel: MapViewModel = viewModel()
+
                 Box(modifier = Modifier.fillMaxSize()) {
                     DrawBackground()
                     Column(
                         modifier = Modifier.fillMaxSize()
                     ) {
-                        MapScreen()
+                        MapScreen(vm = mapViewModel)
                     }
 
                     Column(
@@ -71,12 +74,17 @@ class MainActivity : ComponentActivity() {
                         verticalArrangement = Arrangement.Bottom
                     ) {
                         GeoIcon()
-                        HudBar(onIconClick = {section -> activeSection = section})
+                        HudBar(onIconClick = { section -> activeSection = section })
                     }
 
                     Section(
                         activeSection = activeSection,
-                        onDismiss = { activeSection = null }
+                        onDismiss = { activeSection = null },
+                        onEatBuildRoute = { poi ->
+                            mapViewModel.onPoiClick(poi)
+                            mapViewModel.onBuildRouteToPoiRequested()
+                            activeSection = null
+                        }
                     )
                 }
             }
@@ -108,13 +116,13 @@ private fun DrawIcon(
             .clip(RoundedCornerShape(10.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-            indication = ripple(
-                radius = 100.dp,
-                color = Color(standardTSUColor.toColorInt())
-            )
-        ) {
-            onClick()
-        },
+                indication = ripple(
+                    radius = 100.dp,
+                    color = Color(standardTSUColor.toColorInt())
+                )
+            ) {
+                onClick()
+            },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -137,7 +145,7 @@ private fun DrawBackground() {
 }
 
 @Composable
-private fun HudBar(onIconClick: (String) -> Unit ) {
+private fun HudBar(onIconClick: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
