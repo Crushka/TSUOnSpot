@@ -1,5 +1,6 @@
 package com.example.tsuonspot
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -44,49 +45,113 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 
-class WhereToEatMenu {
-    data class EatPlace(
-        val id: Int,
-        val title: String,
-        val icon: Int,
-        val places: String,
-        val description: String
-    )
+@Composable
+fun DrawEatMenu(
+    onEatPlaceClick: (PointOfInterest) -> Unit = {},
+    onBuildRoute: (PointOfInterest) -> Unit = {}
+) {
+    val eatList = pointsOfInterest
 
-    @Composable
-    fun DrawMenu(
-        onEatPlaceClick: (EatPlace) -> Unit = {}
+    var selectedId by remember { mutableStateOf<Int?>(null) }
+
+    val tsuBlue = Color(standardTSUColor.toColorInt())
+    val hasSelection = selectedId != null
+
+    Column(
+        modifier = Modifier.fillMaxSize()
     ) {
-        val eatList = remember {
-            listOf(
-                EatPlace(1, "Блины", R.drawable.rodina, "Сибирские блины", "Blini"),
-                EatPlace(2, "Кофе", R.drawable.rodina, "StarBooks, Научка, Ярче, Абрикос", "Coffee"),
-                EatPlace(3, "Снеки", R.drawable.rodina, "Вендинговые аппараты, Ярче, Абрикос, Подкова", "Snacks"),
-                EatPlace(4, "Одноразовая посуда", R.drawable.rodina, "Ярче, Абрикос", "DispTableware")
-            )
-        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 10.dp, bottom = 10.dp, top = 5.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Card(
+                modifier = Modifier
+                    .padding(start = 10.dp)
+                    .height(40.dp)
+                    .width(120.dp),
+                shape = RoundedCornerShape(14.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color.White,
+                    contentColor = tsuBlue
+                ),
+                border = BorderStroke(1.5.dp, tsuBlue)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row {
+                        Image(
+                            painter = painterResource(R.drawable.zone_icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(25.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Text(
+                            modifier = Modifier.padding(start = 7.dp),
+                            text = "Зоны еды",
+                            fontSize = 15.sp,
+                            fontFamily = standardTSUFont,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
 
-        var selectedPlaces by remember { mutableStateOf(setOf<Int>()) }
+            Card(
+                modifier = Modifier
+                    .padding(end = 20.dp)
+                    .height(40.dp)
+                    .width(110.dp),
+                shape = RoundedCornerShape(14.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = tsuBlue,
+                    contentColor = Color.White
+                )
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row {
+                        Image(
+                            painter = painterResource(R.drawable.filter_icon),
+                            contentDescription = null,
+                            modifier = Modifier.size(25.dp),
+                            contentScale = ContentScale.Fit
+                        )
+                        Text(
+                            modifier = Modifier.padding(start = 7.dp),
+                            text = "Фильтр",
+                            fontSize = 15.sp,
+                            fontFamily = standardTSUFont,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
 
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 10.dp, bottom = 90.dp)
+                contentPadding = PaddingValues(bottom = 90.dp)
             ) {
                 items(eatList) { item ->
-                    val isSelected = item.id in selectedPlaces
+                    val isSelected = item.id == selectedId
                     CardTemplate(
                         attraction = item,
                         isSelected = isSelected,
-                        onCardClick = {
-                            onEatPlaceClick(item)
-                        },
+                        onCardClick = { onEatPlaceClick(item) },
                         onAddClick = {
-                            selectedPlaces = if (isSelected) {
-                                selectedPlaces - item.id
-                            } else {
-                                selectedPlaces + item.id
-                            }
+                            selectedId = if (isSelected) null else item.id
                         }
                     )
                 }
@@ -100,39 +165,17 @@ class WhereToEatMenu {
                 Card(
                     modifier = Modifier
                         .navigationBarsPadding()
-                        .padding(20.dp, 0.dp)
-                        .size(60.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = Color.White,
-                        contentColor = Color(standardTSUColor.toColorInt())
-                    )
-                ) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = selectedPlaces.size.toString(),
-                            fontSize = 46.sp,
-                            fontFamily = standardTSUFont,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-
-                Card(
-                    modifier = Modifier
-                        .navigationBarsPadding()
-                        .padding(start = 0.dp, end = 20.dp)
+                        .padding(start = 20.dp, end = 20.dp)
                         .height(60.dp)
-                        .width(400.dp),
+                        .width(400.dp)
+                        .clickable(enabled = hasSelection) {
+                            val poi = eatList.firstOrNull { it.id == selectedId }
+                            if (poi != null) onBuildRoute(poi)
+                        },
                     shape = RoundedCornerShape(20.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = if (hasSelection) 13.dp else 4.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = Color(standardTSUColor.toColorInt()),
+                        containerColor = if (hasSelection) tsuBlue else Color(standardTSUColor.toColorInt()),
                         contentColor = Color.White
                     )
                 ) {
@@ -152,106 +195,107 @@ class WhereToEatMenu {
             }
         }
     }
+}
 
-    @Composable
-    private fun CardTemplate(
-        attraction: EatPlace,
-        isSelected: Boolean,
-        onCardClick: () -> Unit,
-        onAddClick: () -> Unit
+@Composable
+private fun CardTemplate(
+    attraction: PointOfInterest,
+    isSelected: Boolean,
+    onCardClick: () -> Unit,
+    onAddClick: () -> Unit
+) {
+    val tsuBlue = Color(standardTSUColor.toColorInt())
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(20.dp, 10.dp)
+            .size(95.dp)
+            .clickable { onCardClick() },
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White,
+            contentColor = tsuBlue
+        )
     ) {
-        Card(
+        Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp, 10.dp)
-                .size(95.dp)
-                .clickable { onCardClick() },
-            shape = RoundedCornerShape(20.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White,
-                contentColor = Color(standardTSUColor.toColorInt())
-            )
+                .fillMaxSize()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
+            Image(
+                painter = painterResource(attraction.imageRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(75.dp)
+                    .clip(shape = RoundedCornerShape(15.dp)),
+                contentScale = ContentScale.Crop
+            )
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(start = 7.dp, top = 10.dp),
             ) {
-                Image(
-                    painter = painterResource(attraction.icon),
-                    contentDescription = attraction.description,
-                    modifier = Modifier
-                        .size(75.dp)
-                        .clip(shape = RoundedCornerShape(15.dp)),
-                    contentScale = ContentScale.Crop
+                Text(
+                    text = attraction.title,
+                    fontSize = 14.sp,
+                    lineHeight = 1.2.em,
+                    fontFamily = standardTSUFont,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2
                 )
-                Column(
+                Card(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 7.dp),
-                ) {
-                    Text(
-                        text = attraction.title,
-                        fontSize = 14.sp,
-                        lineHeight = 1.2.em,
-                        fontFamily = standardTSUFont,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2
+                        .padding(top = 5.dp)
+                        .size(width = 100.dp, height = 30.dp)
+                        .clickable { onAddClick() },
+                    shape = RoundedCornerShape(8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = tsuBlue,
+                        contentColor = Color.White
                     )
-                    Card(
+                ) {
+                    Row(
                         modifier = Modifier
-                            .padding(top = 5.dp)
-                            .size(width = 170.dp, height = 30.dp)
-                            .clickable { onAddClick() },
-                        shape = RoundedCornerShape(8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color(standardTSUColor.toColorInt()),
-                            contentColor = Color.White
-                        )
+                            .fillMaxSize()
+                            .padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize()
-                                .padding(horizontal = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                                .size(18.dp)
+                                .background(
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(5.dp)
+                                ),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(18.dp)
-                                    .background(
-                                        color = Color.White,
-                                        shape = RoundedCornerShape(5.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isSelected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.Check,
-                                        contentDescription = "Выбрано",
-                                        tint = Color(standardTSUColor.toColorInt()),
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                }
+                            if (isSelected) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = "Выбрано",
+                                    tint = tsuBlue,
+                                    modifier = Modifier.size(14.dp)
+                                )
                             }
-                            Text(
-                                modifier = Modifier.padding(start = 5.dp),
-                                text = if (isSelected) "Добавлено" else "Добавить",
-                                fontSize = 12.sp,
-                                fontFamily = standardTSUFont,
-                                fontWeight = FontWeight.Bold,
-                                style = LocalTextStyle.current.copy(
-                                    platformStyle = PlatformTextStyle(
-                                        includeFontPadding = false
-                                    )
+                        }
+                        Text(
+                            modifier = Modifier.padding(start = 5.dp),
+                            text = if (isSelected) "Выбрано" else "Выбрать",
+                            fontSize = 12.sp,
+                            fontFamily = standardTSUFont,
+                            fontWeight = FontWeight.Bold,
+                            style = LocalTextStyle.current.copy(
+                                platformStyle = PlatformTextStyle(
+                                    includeFontPadding = false
                                 )
                             )
-                        }
+                        )
                     }
                 }
             }
         }
     }
-
 }

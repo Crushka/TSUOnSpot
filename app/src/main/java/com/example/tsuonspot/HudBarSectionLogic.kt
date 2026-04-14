@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -25,66 +26,78 @@ import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 
 class HudBarSectionLogic {}
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    public fun Section(activeSection: String?, onDismiss: () -> Unit) {
-        val configuration = LocalConfiguration.current
-        val screenHeight = configuration.screenHeightDp.dp
-        val topGap = screenHeight * 0.1f
 
-        val attractionsMenu = AttractionsMenu()
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+public fun Section(
+    activeSection: String?,
+    onDismiss: () -> Unit,
+    // Вызывается когда пользователь выбрал заведение и нажал "Построить маршрут".
+    // Родитель ставит маркер на карте и закрывает меню.
+    onEatBuildRoute: (PointOfInterest) -> Unit = {}
+) {
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val topGap = screenHeight * 0.1f
 
-        if (activeSection != null) {
-            ModalBottomSheet(
-                onDismissRequest = { onDismiss() },
-                sheetState = rememberModalBottomSheetState(
-                    skipPartiallyExpanded = true
-                ),
-                containerColor = Color.Transparent,
-                contentColor = Color(standardTSUColor.toColorInt()),
-                dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Transparent) },
-                contentWindowInsets = {
-                    WindowInsets(
-                        top = topGap,
-                        bottom = 0.dp
-                    )
-                }
+    val attractionsMenu = AttractionsMenu()
+
+    if (activeSection != null) {
+        ModalBottomSheet(
+            onDismissRequest = { onDismiss() },
+            sheetState = rememberModalBottomSheetState(
+                skipPartiallyExpanded = true
+            ),
+            containerColor = Color.Transparent,
+            contentColor = Color(standardTSUColor.toColorInt()),
+            dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Transparent) },
+            contentWindowInsets = {
+                WindowInsets(
+                    top = topGap,
+                    bottom = 0.dp
+                )
+            }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
+                Card(
+                    modifier = Modifier.fillMaxSize(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color.White,
+                        contentColor = Color(standardTSUColor.toColorInt())
+                    ),
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                 ) {
-                    Card(
-                        modifier = Modifier.fillMaxSize(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = Color.White,
-                            contentColor = Color(standardTSUColor.toColorInt())
-                        ),
-                        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column(
+                        Box(
                             modifier = Modifier
-                                .fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(10.dp)
-                                    .size(50.dp, 5.dp)
-                                    .background(
-                                        color = Color(standardTSUColor.toColorInt()).copy(alpha = 0.5f),
-                                        shape = CircleShape
-                                    )
+                                .padding(10.dp)
+                                .size(50.dp, 5.dp)
+                                .background(
+                                    color = Color(standardTSUColor.toColorInt()).copy(alpha = 0.5f),
+                                    shape = CircleShape
+                                )
+                        )
+                        when (activeSection) {
+                            "walk"    -> attractionsMenu.DrawMenu()
+                            "route"   -> Text("Секция Маршрут", Modifier.padding(10.dp))
+                            "eat"     -> DrawEatMenu(
+                                onBuildRoute = { poi ->
+                                    onEatBuildRoute(poi)
+                                    onDismiss()
+                                }
                             )
-                            when (activeSection) {
-                                "walk"    -> attractionsMenu.DrawMenu()
-                                "route"   -> Text("Секция Маршрут", Modifier.padding(10.dp))
-                                "eat"     -> Text("Где поесть", Modifier.padding(10.dp))
-                                "account" -> Text("Личный кабинет", Modifier.padding(10.dp))
-                            }
+                            "account" -> Text("Личный кабинет", Modifier.padding(10.dp))
                         }
                     }
                 }
             }
         }
     }
+}

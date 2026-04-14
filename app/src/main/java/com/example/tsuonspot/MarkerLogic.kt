@@ -1,3 +1,7 @@
+/// НИ ПРИ КАКИХ ОБСТОЯТЕЛЬСТВАХ НЕ МЕНЯТЬ ЭТОТ ФАЙЛ!!!
+/// ЕСЛИ НУЖНО ЧТО-ТО СДЕЛАТЬ С КООРДИНАТАМИ, ТО ПИШИТЕ В ДРУГОМ
+/// ФАЙЛЕ, ПОДТЯГИВАЯ ОТСЮДА ДАННЫЕ ЕСЛИ НУЖНО
+
 package com.example.tsuonspot
 
 import android.app.Application
@@ -45,6 +49,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alghoritms.Data.GridCell
+import com.example.alghoritms.Data.Point
 import com.example.alghoritms.pathFind.GridAStar
 
 data class MapCamera(
@@ -66,7 +71,10 @@ data class MapState(
     val startPoint: Pair<Int, Int>? = null,
     val endPoint: Pair<Int, Int>? = null,
     val pathPoints: List<GridCell>? = null,
-    val pathError: Boolean = false
+    val pathError: Boolean = false,
+
+    val selectedPoi: PointOfInterest? = null,
+    val isWaitingForPoiStart: Boolean = false
 )
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
@@ -130,9 +138,50 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _isMatrixLoading.value = false
         }
     }
+    fun onPoiClick(poi: PointOfInterest) {
+        _mapState.update { it.copy(selectedPoi = poi, isWaitingForPoiStart = false) }
+    }
 
+    fun onPoiDismiss() {
+        _mapState.update { it.copy(selectedPoi = null, isWaitingForPoiStart = false) }
+    }
+
+    fun onBuildRouteToPoiRequested() {
+        val poi = _mapState.value.selectedPoi ?: return
+        _mapState.update { current ->
+            current.copy(
+                endPoint = Pair(poi.gridX, poi.gridY),
+                startPoint = null,
+                pathPoints = null,
+                pathError = false,
+                isWaitingForPoiStart = true
+            )
+        }
+    }
     fun onMapClick(x: Float, y: Float) {
         val current = _mapState.value
+
+        val camera = MapCamera(
+            scale = current.scale,
+            offsetX = current.offsetX,
+            offsetY = current.offsetY,
+            cellSize = _cellSize.value
+        )
+        val tappedPoi = findTappedPoi(x, y, pointsOfInterest, camera)
+        if (tappedPoi != null) {
+            onPoiClick(tappedPoi)
+            return
+        }
+
+        if (current.isWaitingForPoiStart && current.endPoint != null) {
+            val gridX = ((x - current.offsetX) / (current.scale * _cellSize.value)).toInt()
+            val gridY = ((y - current.offsetY) / (current.scale * _cellSize.value)).toInt()
+            val startPoint = Pair(gridX, gridY)
+            _mapState.update { it.copy(startPoint = startPoint, isWaitingForPoiStart = false) }
+            findPath(startPoint, current.endPoint)
+            return
+        }
+
         val gridX = ((x - current.offsetX) / (current.scale * _cellSize.value)).toInt()
         val gridY = ((y - current.offsetY) / (current.scale * _cellSize.value)).toInt()
         val clickedPoint = Pair(gridX, gridY)
@@ -248,8 +297,19 @@ fun MapScreen(
         ) {
             DrawMap()
             DrawWay(pathPoints = state.pathPoints)
+            DrawPoiMarkers(
+                pois = pointsOfInterest,
+                selectedPoi = state.selectedPoi,
+                onPoiClick = { vm.onPoiClick(it) }
+            )
             DrawToMarker(endPoint = state.endPoint)
             DrawFromMarker(startPoint = state.startPoint)
+            PoiPopup(
+                poi = state.selectedPoi,
+                isWaitingForStartPoint = state.isWaitingForPoiStart,
+                onBuildRouteClick = { vm.onBuildRouteToPoiRequested() },
+                onDismiss = { vm.onPoiDismiss() }
+            )
 
             DistanceOverlay(
                 startPoint = state.startPoint,
