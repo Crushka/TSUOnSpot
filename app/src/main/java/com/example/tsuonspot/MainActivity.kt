@@ -73,11 +73,6 @@ class MainActivity : ComponentActivity() {
                         GeoIcon()
                         HudBar(onIconClick = {section -> activeSection = section})
                     }
-
-                    Section(
-                        activeSection = activeSection,
-                        onDismiss = { activeSection = null }
-                    )
                 }
             }
         }
