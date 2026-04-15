@@ -9,38 +9,50 @@ import kotlin.random.Random
 class KMeans(private val clustersQuantity:Int,
              private val distanceMetric: DistanceMetric = EuclidianDistance(),
              private val maxIterations: Int = 100,
-             private val threshold: Double = 0.0001, )
+             private val threshold: Double = 0.0001,
+             private val normalize: Boolean = true)
 {
 
     fun findClusters(points: List<Point>): List<Cluster> {
-        if(points.size < clustersQuantity) {
+        val (processedPoints, originalPoints) = if(normalize) {
+            val normalized = normalizePoints(points)
+            val mapping = normalized.zip(points).toMap()
+            Pair(normalized, mapping)
+        }
+        else {
+            Pair(points, points.associateWith { it })
+        }
+
+        if(processedPoints.size < clustersQuantity) {
             throw IllegalArgumentException("Точек меньше, чем кластеров")
         }
 
-        val centroids = KMeansPlusPlus(points)
+        val centroids = KMeansPlusPlus(processedPoints)
+
         val clusters = mutableListOf<Cluster>()
         for(i in 0 until clustersQuantity) {
             clusters.add(Cluster(id = i, centroid = centroids[i]))
         }
 
-        var previousCentroids: List<Point>
+        var previousCentriods: List<Point>
         var iteration = 0
 
         do {
-            previousCentroids = clusters.map { it.centroid ?: Point(0.0, 0.0) }
+            previousCentriods = clusters.map { it.centroid ?: Point(0.0, 0.0) }
 
             clusters.forEach { it.clear() }
 
-            points.forEach { point ->
+            processedPoints.forEach { point ->
+                val originalPoint = originalPoints[point] ?: point
                 val closestCluster = clusters.minByOrNull { cluster ->
                     distanceMetric.calculate(point,cluster.centroid?: Point(0.0, 0.0))
                 }?: clusters[0]
-                closestCluster.addPoint(point)
+                closestCluster.addPoint(originalPoint)
             }
             clusters.forEach { it.recalculateCentroid() }
 
             val currentCentroids = clusters.map {it.centroid?: Point(0.0, 0.0) }
-            val movement = previousCentroids.zip(currentCentroids) { previous, current ->
+            val movement = previousCentriods.zip(currentCentroids) { previous, current ->
                 previous.distanceTo(current)
             }.sum()
 
@@ -87,7 +99,7 @@ class KMeans(private val clustersQuantity:Int,
         val maxValidClusters = min(maxClusters, points.size)
 
         for(clusterValue in 1..maxValidClusters) {
-            val kMeans = KMeans(clusterValue, distanceMetric = distanceMetric)
+            val kMeans = KMeans(clusterValue, distanceMetric = distanceMetric, normalize=normalize)
             val clusters = kMeans.findClusters(points)
             val distortion = clusters.sumOf{cluster ->
                 cluster.points.sumOf{ point ->
@@ -136,5 +148,21 @@ class KMeans(private val clustersQuantity:Int,
         }
 
         return elbowIndex + 1
+    }
+
+    private fun normalizePoints(points: List<Point>): List<Point> {
+        val minX = points.minOf { it.x }
+        val minY = points.minOf { it.y }
+        val maxX = points.maxOf { it.x }
+        val maxY = points.maxOf { it.y }
+
+        val rangeX = maxX - minX
+        val rangeY = maxY - minY
+
+        return points.map{ point ->
+            val normalizedX = if(rangeX > 0) (point.x - minX) / rangeX else 0.5
+            val normalizedY = if(rangeY > 0) (point.y - minY) / rangeY else 0.5
+            Point(normalizedX, normalizedY, clusterId = point.clusterId)
+        }
     }
 }

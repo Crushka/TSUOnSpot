@@ -1,34 +1,24 @@
-package com.example.tsuonspot.clustering
+package com.example.alghoritms.clustering
 
 import com.example.alghoritms.Data.Point
-import com.example.alghoritms.clustering.DistanceMetric
-import com.example.alghoritms.pathFind.GridAStar
-import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 class PedestrianDistance(
-    private val gridAStar: GridAStar,
-    private val scaleX: Double = 1.0,
-    private val scaleY: Double = 1.0,
-    private val offsetX: Int = 0,
-    private val offsetY: Int = 0): DistanceMetric {
+    private val cache: Map<Pair<Int, Int>, Double>,
+    private val points: List<Point>
+) : DistanceMetric {
+
     override fun calculate(point1: Point, point2: Point): Double {
-        val x1 = (point1.x * scaleX).roundToInt() + offsetX
-        val y1 = (point1.y * scaleY).roundToInt() + offsetY
-        val x2 = (point2.x * scaleX).roundToInt() + offsetX
-        val y2 = (point2.y * scaleY).roundToInt() + offsetY
+        val i = points.indexOf(point1)
+        val j = points.indexOf(point2)
+        if (i == -1 || j == -1) return euclidean(point1, point2)
+        val key = if (i <= j) i to j else j to i
+        return cache[key] ?: euclidean(point1, point2)
+    }
 
-        val start = gridAStar.findNearestWalkable(x1, y1)
-        val end = gridAStar.findNearestWalkable(x2, y2)
-
-        if(start == null || end == null) {
-            return point1.distanceTo(point2) * 1.5
-        }
-
-        return try {
-            val (temp, cost) = gridAStar.findPath(start, end)
-            cost
-        } catch (error: IllegalArgumentException) {
-            point1.distanceTo(point2) * 2.0
-        }
+    private fun euclidean(p1: Point, p2: Point): Double {
+        val dx = p1.x - p2.x;
+        val dy = p1.y - p2.y
+        return sqrt(dx * dx + dy * dy)
     }
 }

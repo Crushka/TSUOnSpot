@@ -29,12 +29,11 @@ class HudBarSectionLogic {}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-public fun Section(
+fun Section(
     activeSection: String?,
     onDismiss: () -> Unit,
-    // Вызывается когда пользователь выбрал заведение и нажал "Построить маршрут".
-    // Родитель ставит маркер на карте и закрывает меню.
-    onEatBuildRoute: (PointOfInterest) -> Unit = {}
+    onEatBuildRoute: (PointOfInterest) -> Unit = {},
+    onShowZones: () -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
@@ -45,23 +44,15 @@ public fun Section(
     if (activeSection != null) {
         ModalBottomSheet(
             onDismissRequest = { onDismiss() },
-            sheetState = rememberModalBottomSheetState(
-                skipPartiallyExpanded = true
-            ),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = Color.Transparent,
             contentColor = Color(standardTSUColor.toColorInt()),
             dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Transparent) },
             contentWindowInsets = {
-                WindowInsets(
-                    top = topGap,
-                    bottom = 0.dp
-                )
+                WindowInsets(top = topGap, bottom = 0.dp)
             }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 Card(
                     modifier = Modifier.fillMaxSize(),
                     colors = CardDefaults.cardColors(
@@ -71,8 +62,7 @@ public fun Section(
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize(),
+                        modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
@@ -90,6 +80,10 @@ public fun Section(
                             "eat"     -> DrawEatMenu(
                                 onBuildRoute = { poi ->
                                     onEatBuildRoute(poi)
+                                    onDismiss()
+                                },
+                                onShowZones = {
+                                    onShowZones()
                                     onDismiss()
                                 }
                             )

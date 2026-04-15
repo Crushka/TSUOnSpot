@@ -48,11 +48,13 @@ import androidx.core.graphics.toColorInt
 @Composable
 fun DrawEatMenu(
     onEatPlaceClick: (PointOfInterest) -> Unit = {},
-    onBuildRoute: (PointOfInterest) -> Unit = {}
+    onBuildRoute: (PointOfInterest) -> Unit = {},
+    onShowZones: () -> Unit = {}
 ) {
     val eatList = pointsOfInterest
 
     var selectedId by remember { mutableStateOf<Int?>(null) }
+    var showFilter by remember { mutableStateOf(false) }
 
     val tsuBlue = Color(standardTSUColor.toColorInt())
     val hasSelection = selectedId != null
@@ -71,7 +73,8 @@ fun DrawEatMenu(
                 modifier = Modifier
                     .padding(start = 10.dp)
                     .height(40.dp)
-                    .width(120.dp),
+                    .width(120.dp)
+                    .clickable { onShowZones() },
                 shape = RoundedCornerShape(14.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
                 colors = CardDefaults.cardColors(
@@ -84,7 +87,7 @@ fun DrawEatMenu(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
                             painter = painterResource(R.drawable.zone_icon),
                             contentDescription = null,
@@ -104,6 +107,7 @@ fun DrawEatMenu(
             }
 
             Card(
+                onClick = { showFilter = true },
                 modifier = Modifier
                     .padding(end = 20.dp)
                     .height(40.dp)
@@ -119,7 +123,7 @@ fun DrawEatMenu(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Image(
                             painter = painterResource(R.drawable.filter_icon),
                             contentDescription = null,
@@ -136,6 +140,14 @@ fun DrawEatMenu(
                         )
                     }
                 }
+            }
+            if (showFilter) {
+                DecisionTreeFilter(
+                    onDismiss = { showFilter = false },
+                    onResult = { res, path ->
+                        println("Получено: $res")
+                    }
+                )
             }
         }
 
@@ -158,7 +170,9 @@ fun DrawEatMenu(
             }
 
             Row(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 10.dp),
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.Center
             ) {

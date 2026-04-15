@@ -127,6 +127,7 @@ class AttractionsMenu {
 
             Row(
                 modifier = Modifier
+                    .padding(bottom = 10.dp)
                     .fillMaxSize()
                     .navigationBarsPadding(),
                 verticalAlignment = Alignment.Bottom,
@@ -134,7 +135,7 @@ class AttractionsMenu {
             ) {
                 Card(
                     modifier = Modifier
-                        .padding(bottom = 20.dp, start = 20.dp, end = 10.dp)
+                        .padding(start = 20.dp, end = 10.dp)
                         .size(60.dp),
                     shape = RoundedCornerShape(20.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
@@ -153,7 +154,7 @@ class AttractionsMenu {
 
                 Card(
                     modifier = Modifier
-                        .padding(bottom = 20.dp, end = 20.dp)
+                        .padding(end = 20.dp)
                         .height(60.dp)
                         .weight(1f),
                     shape = RoundedCornerShape(20.dp),

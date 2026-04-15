@@ -1,10 +1,10 @@
-/// НИ ПРИ КАКИХ ОБСТОЯТЕЛЬСТВАХ НЕ МЕНЯТЬ ЭТОТ ФАЙЛ!!!
-/// ЕСЛИ НУЖНО ЧТО-ТО СДЕЛАТЬ С КООРДИНАТАМИ, ТО ПИШИТЕ В ДРУГОМ
-/// ФАЙЛЕ, ПОДТЯГИВАЯ ОТСЮДА ДАННЫЕ ЕСЛИ НУЖНО
-
 package com.example.tsuonspot
 
 import android.app.Application
+import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -49,7 +49,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alghoritms.Data.GridCell
-import com.example.alghoritms.Data.Point
 import com.example.alghoritms.pathFind.GridAStar
 
 data class MapCamera(
@@ -74,7 +73,14 @@ data class MapState(
     val pathError: Boolean = false,
 
     val selectedPoi: PointOfInterest? = null,
-    val isWaitingForPoiStart: Boolean = false
+    val isWaitingForPoiStart: Boolean = false,
+
+    val showClusters: Boolean = false,
+    val clusters: List<ClusterResult> = emptyList(),
+    val clusterMetricIsPedestrian: Boolean = false,
+    val isClustering: Boolean = false,
+    val showClusterInfoSheet: Boolean = false,
+    val voronoiBitmap: Bitmap? = null
 )
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
@@ -106,25 +112,23 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
+
     fun onMapDoubleTap(x: Float, y: Float) {
         val current = _mapState.value
         val gridX = ((x - current.offsetX) / (current.scale * _cellSize.value)).toInt()
         val gridY = ((y - current.offsetY) / (current.scale * _cellSize.value)).toInt()
-
         val hitRadius = 20
-
         val clickedOnStart = current.startPoint?.let {
             kotlin.math.abs(it.first - gridX) < hitRadius && kotlin.math.abs(it.second - gridY) < hitRadius
         } ?: false
-
         val clickedOnEnd = current.endPoint?.let {
             kotlin.math.abs(it.first - gridX) < hitRadius && kotlin.math.abs(it.second - gridY) < hitRadius
         } ?: false
-
         if (clickedOnStart || clickedOnEnd) {
             clearMap()
         }
     }
+
     private fun loadMatrix() {
         viewModelScope.launch {
             gridAStar = withContext(Dispatchers.IO) {
@@ -138,6 +142,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             _isMatrixLoading.value = false
         }
     }
+
     fun onPoiClick(poi: PointOfInterest) {
         _mapState.update { it.copy(selectedPoi = poi, isWaitingForPoiStart = false) }
     }
@@ -158,8 +163,10 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
+
     fun onMapClick(x: Float, y: Float) {
         val current = _mapState.value
+        if (current.showClusters) return
 
         val camera = MapCamera(
             scale = current.scale,
@@ -209,22 +216,18 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun findPath(from: Pair<Int, Int>, to: Pair<Int, Int>) {
         val astar = gridAStar ?: return
-
         viewModelScope.launch {
             val result = withContext(Dispatchers.Default) {
                 try {
                     val startCell = astar.findNearestWalkable(from.first, from.second)
                     val endCell = astar.findNearestWalkable(to.first, to.second)
-
                     if (startCell == null || endCell == null) return@withContext null
-
                     val (path, _) = astar.findPath(startCell, endCell)
                     path
                 } catch (e: IllegalArgumentException) {
                     null
                 }
             }
-
             _mapState.update { current ->
                 if (result != null) {
                     current.copy(pathPoints = result, pathError = false)
@@ -245,14 +248,64 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
-}
 
-@Composable
-fun DrawDebugDiagonal(camera: MapCamera) {
-    val points = (0..100).map { i ->
-        GridCell(x = (722 * i / 100), y = (501 * i / 100), isWalkable = true)
+    fun enterClusterMode() {
+        _mapState.update {
+            it.copy(
+                showClusters = true,
+                isClustering = true,
+                clusters = emptyList(),
+                clusterMetricIsPedestrian = false
+            )
+        }
+        launchClustering(usePedestrian = false)
     }
-    DrawWay(pathPoints = points)
+
+    fun exitClusterMode() {
+        _mapState.update {
+            it.copy(
+                showClusters = false,
+                clusters = emptyList(),
+                isClustering = false,
+                showClusterInfoSheet = false,
+                voronoiBitmap = null
+            )
+        }
+    }
+
+    fun toggleClusterMetric() {
+        val newPedestrian = !_mapState.value.clusterMetricIsPedestrian
+        _mapState.update { it.copy(clusterMetricIsPedestrian = newPedestrian, isClustering = true, clusters = emptyList()) }
+        launchClustering(newPedestrian)
+    }
+
+    fun showClusterInfo() {
+        _mapState.update { it.copy(showClusterInfoSheet = true) }
+    }
+
+    fun dismissClusterInfo() {
+        _mapState.update { it.copy(showClusterInfoSheet = false) }
+    }
+
+    private fun launchClustering(usePedestrian: Boolean) {
+        viewModelScope.launch {
+            val result = try {
+                computeClusters(pointsOfInterest, usePedestrian, gridAStar)
+            } catch (e: Exception) {
+                emptyList()
+            }
+
+            val bitmap = if (result.isNotEmpty()) {
+                generateVoronoiBitmap(result, 722, 501)
+            } else null
+
+            _mapState.update { it.copy(
+                clusters = result,
+                isClustering = false,
+                voronoiBitmap = bitmap
+            )}
+        }
+    }
 }
 
 @Composable
@@ -272,30 +325,34 @@ fun MapScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .onSizeChanged {size ->
+                .onSizeChanged { size ->
                     vm.updateCellSize(size.width.toFloat() / 722f)
                 }
                 .pointerInput(Unit) {
                     detectTapGestures(
-                        onTap = { offset ->
-                            vm.onMapClick(offset.x, offset.y)
-                        },
-                        onDoubleTap = { offset ->
-                            vm.onMapDoubleTap(offset.x, offset.y)
-                        }
+                        onTap = { offset -> vm.onMapClick(offset.x, offset.y) },
+                        onDoubleTap = { offset -> vm.onMapDoubleTap(offset.x, offset.y) }
                     )
                 }
                 .pointerInput(Unit) {
                     detectTransformGestures { _, pan, zoom, _ ->
-                        vm.onTransform(
-                            panX = pan.x,
-                            panY = pan.y,
-                            zoomChange = zoom
-                        )
+                        vm.onTransform(pan.x, pan.y, zoom)
                     }
                 }
         ) {
             DrawMap()
+            AnimatedVisibility(
+                visible = state.showClusters && state.clusters.isNotEmpty(),
+                enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(600)),
+                exit = fadeOut(animationSpec = androidx.compose.animation.core.tween(400))
+            ) {
+                VoronoiClusterOverlay(
+                    clusters = state.clusters,
+                    camera = camera,
+                    voronoiBitmap = state.voronoiBitmap
+                )
+            }
+
             DrawWay(pathPoints = state.pathPoints)
             DrawPoiMarkers(
                 pois = pointsOfInterest,
@@ -311,20 +368,42 @@ fun MapScreen(
                 onDismiss = { vm.onPoiDismiss() }
             )
 
-            DistanceOverlay(
-                startPoint = state.startPoint,
-                endPoint = state.endPoint,
-                pathPoints = state.pathPoints,
-                cellSize = cellSize
-            )
+            if (!state.showClusters) {
+                DistanceOverlay(
+                    startPoint = state.startPoint,
+                    endPoint = state.endPoint,
+                    pathPoints = state.pathPoints,
+                    cellSize = cellSize
+                )
+            }
+
+            AnimatedVisibility(
+                visible = state.showClusters,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                ClusterControlsHud(
+                    usePedestrian = state.clusterMetricIsPedestrian,
+                    isLoading = state.isClustering,
+                    onToggleMetric = { vm.toggleClusterMetric() },
+                    onShowInfo = { vm.showClusterInfo() },
+                    onExit = { vm.exitClusterMode() }
+                )
+            }
         }
+    }
+
+    if (state.showClusterInfoSheet) {
+        ClusterInfoSheet(
+            clusters = state.clusters,
+            onDismiss = { vm.dismissClusterInfo() }
+        )
     }
 }
 
 @Composable
 fun DrawMap() {
     val camera = LocalMapCamera.current
-
     Image(
         painter = painterResource(R.drawable.map),
         contentDescription = "Map",
@@ -348,7 +427,6 @@ fun DrawWay(
     strokeWidthDp: Float = 4f
 ) {
     if (pathPoints == null || pathPoints.size < 2) return
-
     val camera = LocalMapCamera.current
     val density = LocalDensity.current
     val strokeWidthPx = with(density) { strokeWidthDp.dp.toPx() }
@@ -360,22 +438,16 @@ fun DrawWay(
                 y = (cell.y * camera.scale * camera.cellSize) + camera.offsetY
             )
         }
-
         val path = Path().apply {
             transformed.forEachIndexed { i, offset ->
                 if (i == 0) moveTo(offset.x, offset.y)
                 else lineTo(offset.x, offset.y)
             }
         }
-
         drawPath(
             path = path,
             color = pathColor.copy(alpha = 0.85f),
-            style = Stroke(
-                width = strokeWidthPx,
-                cap = StrokeCap.Round,
-                join = StrokeJoin.Round
-            )
+            style = Stroke(width = strokeWidthPx, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
     }
 }
@@ -385,7 +457,6 @@ fun DrawToMarker(endPoint: Pair<Int, Int>?) {
     if (endPoint == null) return
     val camera = LocalMapCamera.current
     var size by remember { mutableStateOf(IntSize.Zero) }
-
     Box(
         modifier = Modifier
             .offset {
@@ -409,7 +480,6 @@ fun DrawFromMarker(startPoint: Pair<Int, Int>?) {
     if (startPoint == null) return
     val camera = LocalMapCamera.current
     var size by remember { mutableStateOf(IntSize.Zero) }
-
     Box(
         modifier = Modifier
             .offset {
