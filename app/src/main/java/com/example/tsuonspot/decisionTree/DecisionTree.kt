@@ -2,12 +2,15 @@ package com.example.tsuonspot.decisionTree
 
 import com.example.alghoritms.Data.DataRow
 import com.example.alghoritms.Data.DecisionNode
+import com.example.alghoritms.Data.PredictionOutput
+import com.example.alghoritms.Data.PredictionResult
 import kotlin.math.log2
 
 class DecisionTree {
-    private var root: DecisionNode? = null
-    private var featureNames: List<String> = emptyList();
-
+    var root: DecisionNode? = null
+        private set
+    var featureNames: List<String> = emptyList()
+        private set
     private fun calculateEntropy(data: List<DataRow>): Double {
         if(data.isEmpty()) return 0.0;
 
@@ -96,34 +99,82 @@ class DecisionTree {
         )
     }
 
-    fun predict(features: List<String>) : Pair<Map<String, Double>, List<String>> {
-        val path = mutableListOf<String>()
+    fun predict(features: List<String>, maxAlternatives: Int = 2) : PredictionOutput {
+        val path = mutableListOf<DecisionNode>()
         var currentNode = root
         val normalizedFeatures = features.map { it.trim().lowercase() }
+        val pathSteps = mutableListOf<String>()
 
-        while (currentNode != null) {
-            if(currentNode.isLeaf) {
-                val total = currentNode.classDistribution.values.sum().toDouble()
-                val chances = currentNode.classDistribution.mapValues { (temp, count) ->
-                    count / total
-                }
-                path.add("Итоговое распределение: ${chances.map {(name, value) -> "$name: ${(value*100).toInt()}%"}}")
-                return Pair(chances, path)
-            }
-            else {
-                val attrIndex = currentNode.splitAttributeIndex!!
-                val inputValue = if (attrIndex < normalizedFeatures.size) {
-                    normalizedFeatures[attrIndex]
-                } else ""
-                path.add("Проверка: ${featureNames[attrIndex]} == $inputValue")
-
-                currentNode = currentNode.children[inputValue]
-                if (currentNode == null) {
-                    path.add("Тупик")
-                    return Pair(emptyMap(), path)
-                }
-            }
+        while (currentNode != null && !currentNode.isLeaf) {
+            path.add(currentNode)
+            val index = currentNode.splitAttributeIndex!!
+            val value = normalizedFeatures.getOrNull(index)?: " "
+            pathSteps.add("Проверка: ${featureNames[index]} == $value")
+            currentNode = currentNode.children[value]
+            if(currentNode == null) break
         }
-        return Pair(emptyMap(), path)
+        val mainLeaf = currentNode
+        val mainDistance = normalizeDistribution(mainLeaf?.classDistribution ?: emptyMap())
+        val mainRec = mainDistance.maxByOrNull {it.value}?.key ?: "Не найдено"
+        pathSteps.add("Итоговое распределение: ${formatDistance(mainDistance)}")
+        val mainResult = PredictionResult(mainRec, mainDistance[mainRec]?: 0.0, pathSteps)
+
+        val alternatives = mutableListOf<PredictionResult>()
+        for((depth, node) in path.withIndex()) {
+            if(node.isLeaf || node.children.isEmpty()) {
+                continue
+            }
+
+            val index = node.splitAttributeIndex!!
+            val actualValue = normalizedFeatures.getOrNull(index)?: " "
+
+            for((siblingValue, siblingNode) in node.children) {
+                if(siblingValue == actualValue) {
+                    continue
+                }
+
+                val allPath = mutableListOf<String>()
+
+                for(i in 0 until depth) {
+                    val previousNode = path[i]
+                    val previousIndex = previousNode.splitAttributeIndex ?: -1
+                    val previousValue = normalizedFeatures.getOrNull(previousIndex)
+                    allPath.add("Проверка: ${featureNames[previousIndex]} == $previousValue")
+                }
+                allPath.add("Альтернатива: ${featureNames[index]} == $siblingValue")
+
+                var tempNode = siblingNode
+                while(tempNode != null && tempNode.isLeaf) {
+                    if(tempNode.children.isEmpty()) break
+                    val firstChild = tempNode.children.entries.firstOrNull()?: break
+                    val nextIndex = tempNode.splitAttributeIndex?: -1
+                    allPath.add("Проверка: ${featureNames.getOrNull(nextIndex)?: "unknown"} == ${firstChild.key}")
+                    tempNode = firstChild.value
+                }
+
+                if(tempNode.isLeaf == true) {
+                    val leafDistation = normalizeDistribution(tempNode.classDistribution)
+                    val recommendation = leafDistation.maxByOrNull { it.value }?.key ?: continue
+                    val chance = leafDistation[recommendation] ?: 0.0
+                    if(recommendation != mainRec && alternatives.none {it.recommendation == recommendation}) {
+                        allPath.add("Итог: $recommendation (${(chance*100).toInt()}%)")
+                        alternatives.add(PredictionResult(recommendation, chance, allPath))
+                    }
+                }
+            }
+
+        }
+        return PredictionOutput(main = mainResult,
+            alternatives = alternatives.sortedByDescending { it.chance }.take(maxAlternatives))
     }
+
+    private fun normalizeDistribution(dist: Map<String, Int>): Map<String, Double> {
+        val total = dist.values.sum().toDouble()
+        return if(total == 0.0) emptyMap() else dist.mapValues { it.value / total }
+    }
+
+    private fun formatDistance(distance: Map<String, Double>):String {
+        return distance.map { (name, value) -> "$name: ${(value*100).toInt()}%" }.joinToString(", ")
+    }
+
 }

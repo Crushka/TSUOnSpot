@@ -36,6 +36,17 @@ data class DecisionNode(
     val children: Map<String, DecisionNode> = emptyMap()
 )
 
+data class PredictionResult(
+    val recommendation: String,
+    val chance: Double,
+    val path: List<String>
+)
+
+data class PredictionOutput(
+    val main: PredictionResult,
+    val alternatives: List<PredictionResult>
+)
+
 data class ACOdata(
     val ants: Int = 30,
     val iterations: Int = 40,
@@ -115,3 +126,4 @@ data object CSVData {
         main_building,low,short,grocery,low,good,podkova
     """.trimIndent()
 }
+

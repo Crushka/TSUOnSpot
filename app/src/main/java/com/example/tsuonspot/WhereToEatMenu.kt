@@ -48,7 +48,8 @@ import androidx.core.graphics.toColorInt
 @Composable
 fun DrawEatMenu(
     onEatPlaceClick: (PointOfInterest) -> Unit = {},
-    onBuildRoute: (PointOfInterest) -> Unit = {}
+    onBuildRoute: (PointOfInterest) -> Unit = {},
+    onFilterClick: () -> Unit = {}
 ) {
     val eatList = pointsOfInterest
 
@@ -107,7 +108,8 @@ fun DrawEatMenu(
                 modifier = Modifier
                     .padding(end = 20.dp)
                     .height(40.dp)
-                    .width(110.dp),
+                    .width(110.dp)
+                    .clickable {onFilterClick()},
                 shape = RoundedCornerShape(14.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
                 colors = CardDefaults.cardColors(

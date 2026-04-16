@@ -84,6 +84,30 @@ val pointsOfInterest = listOf(
     PointOfInterest(21, "Rebro",                  gridX = 595, gridY = 470, imageRes = R.drawable.rebro)
 )
 
+fun findPoiByCsvRecommendation(recommendation: String): PointOfInterest? {
+    val slugToId = mapOf(
+        "siberian_pancakes" to 3,
+        "stolovaya_100" to 4,
+        "starbooks" to 6,
+        "bezumno_shaurma" to 7,
+        "batina_shaurma" to 5,
+        "lampochka" to 16,
+        "rostiks" to 12,
+        "panda_juice" to 20,
+        "testo_pastry" to 18,
+        "vechniy_zov" to 15,
+        "rebro_grill" to 21,
+        "poly_bistro" to 19,
+        "herbarium" to 13,
+        "blizhe" to 14,
+        "second_corps_canteen" to 2,
+        "syr_bor" to 1
+    )
+
+    val poiId = slugToId[recommendation.lowercase().trim()]
+    return pointsOfInterest.find { it.id == poiId }
+}
+
 fun findTappedPoi(
     tapX: Float,
     tapY: Float,
