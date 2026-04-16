@@ -35,6 +35,15 @@ class ACO(private val nodes: Int,
                     total += chances[next]
                 }
             }
+            if (total == 0.0) {
+                val unvisited = (0 until nodes).filter { !visited[it] }
+                if (unvisited.isEmpty()) break
+                val next = unvisited.random(random)
+                visited[next] = true
+                path.add(next)
+                current = next
+                continue
+            }
             val rand = random.nextDouble() * total
             var cumSum = 0.0
             for(next in 0 until nodes) {
@@ -54,7 +63,7 @@ class ACO(private val nodes: Int,
 
     private fun calculatePath(path: List<Int>):Double {
         var cost = 0.0
-        for(i in 0 until path.size) {
+        for(i in 0 until path.size - 1) {
             cost += dist[path[i]][path[i+1]]
         }
 

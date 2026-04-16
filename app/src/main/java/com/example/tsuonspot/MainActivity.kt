@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,6 +25,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,23 +60,34 @@ class MainActivity : ComponentActivity() {
         setContent {
             TSUOnSpotTheme {
                 var activeSection by remember { mutableStateOf<String?>(null) }
-
                 val mapViewModel: MapViewModel = viewModel()
+                val mapState by mapViewModel.mapState.collectAsState()
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     DrawBackground()
-                    Column(
-                        modifier = Modifier.fillMaxSize()
-                    ) {
+                    Column(modifier = Modifier.fillMaxSize()) {
                         MapScreen(vm = mapViewModel)
                     }
 
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Bottom
-                    ) {
-                        GeoIcon()
-                        HudBar(onIconClick = { section -> activeSection = section })
+                    if (!mapState.showClusters) {
+                        Box(
+                            modifier = Modifier
+                                .statusBarsPadding()
+                                .fillMaxSize()
+                                .padding(end = 16.dp),
+                            contentAlignment = Alignment.TopEnd
+                        ) {
+                            MapLayerToggleButton(
+                                currentLayer = mapState.mapLayer,
+                                onLayerChange = { mapViewModel.setMapLayer(it) }
+                            )
+                        }
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            verticalArrangement = Arrangement.Bottom
+                        ) {
+                            HudBar(onIconClick = { section -> activeSection = section })
+                        }
                     }
 
                     Section(
@@ -84,6 +97,13 @@ class MainActivity : ComponentActivity() {
                             mapViewModel.onPoiClick(poi)
                             mapViewModel.onBuildRouteToPoiRequested()
                             activeSection = null
+                        },
+                        onShowZones = {
+                            activeSection = null
+                            mapViewModel.enterClusterMode()
+                        },
+                        onBuildAttractionRoute = { selected ->
+                            mapViewModel.onBuildAttractionRoute(selected)
                         }
                     )
                 }
@@ -120,9 +140,7 @@ private fun DrawIcon(
                     radius = 100.dp,
                     color = Color(standardTSUColor.toColorInt())
                 )
-            ) {
-                onClick()
-            },
+            ) { onClick() },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -170,9 +188,9 @@ private fun HudBar(onIconClick: (String) -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 DrawIcon("Attractions", "Прогулка",   R.drawable.attractions_icon) { onIconClick("walk") }
-                DrawIcon("Goto",        "Маршрут",    R.drawable.goto_icon) { onIconClick("route") }
-                DrawIcon("Eat",         "Где поесть", R.drawable.eat_icon) { onIconClick("eat") }
-                DrawIcon("Account",     "Аккаунт",    R.drawable.account_icon) { onIconClick("account") }
+                DrawIcon("Goto",        "Маршрут",    R.drawable.goto_icon)         { onIconClick("route") }
+                DrawIcon("Eat",         "Где поесть", R.drawable.eat_icon)          { onIconClick("eat") }
+                DrawIcon("Account",     "Аккаунт",    R.drawable.account_icon)      { onIconClick("account") }
             }
         }
     }
@@ -190,9 +208,7 @@ private fun GeoIcon() {
                 .size(70.dp),
             shape = RoundedCornerShape(60.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = Color.White,
-            )
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Box(
                 modifier = Modifier

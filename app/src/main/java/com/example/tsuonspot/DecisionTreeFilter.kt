@@ -38,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -261,6 +262,9 @@ fun DecisionTreeFilter(
     onBackToFilter: () -> Unit,
     onResult: (recommendation: String, path: List<String>) -> Unit
 ) {
+    val scope = rememberCoroutineScope()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     val tsuBlue = Color(standardTSUColor.toColorInt())
 
     val (featureNames, dataRows) = remember {
@@ -290,10 +294,18 @@ fun DecisionTreeFilter(
     var predictionOutput by remember { mutableStateOf<PredictionOutput?>(null) }
     var showTreeWindow by remember { mutableStateOf(false) }
 
+    val closeSheet = {
+        scope.launch { sheetState.hide() }.invokeOnCompletion {
+            if (!sheetState.isVisible) {
+                onDismiss()
+            }
+        }
+    }
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.White,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        sheetState = sheetState
     ) {
         if(!result) {
             LazyColumn(

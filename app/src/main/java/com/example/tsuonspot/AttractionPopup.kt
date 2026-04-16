@@ -1,6 +1,5 @@
 package com.example.tsuonspot
 
-import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -50,186 +49,33 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
-import java.io.File
-import kotlin.math.sqrt
-
-data class PointOfInterest(
-    val id: Int,
-    val title: String,
-    val gridX: Int,
-    val gridY: Int,
-    val imageRes: Int
-)
-
-val pointsOfInterest = listOf(
-    PointOfInterest(1, "Сыр-Бор",                 gridX = 340, gridY = 95,  imageRes = R.drawable.cheese_bor),
-    PointOfInterest(2, "XO Bakery",               gridX = 310, gridY = 220, imageRes = R.drawable.cafe_2nd_building),
-    PointOfInterest(3, "Сибирские блины",         gridX = 355, gridY = 180, imageRes = R.drawable.sib_blini),
-    PointOfInterest(4, "100ловая",                gridX = 365, gridY = 165, imageRes = R.drawable.cafeteria_tsu),
-    PointOfInterest(5, "Батина шаурма",           gridX = 185, gridY = 70,  imageRes = R.drawable.batina_shaurma),
-    PointOfInterest(6, "StarBooks",               gridX = 335, gridY = 165, imageRes = R.drawable.star_books),
-    PointOfInterest(7, "Безумно. Крутая шаурма",  gridX = 180, gridY = 55,  imageRes = R.drawable.bezumno),
-    PointOfInterest(8, "Мясной бульвар",          gridX = 145, gridY = 310, imageRes = R.drawable.meat_boulevar),
-    PointOfInterest(9, "Мария Ра",                gridX = 150, gridY = 465, imageRes = R.drawable.mariy_ra),
-    PointOfInterest(10, "Цзисян",                 gridX = 155, gridY = 200, imageRes = R.drawable.chzisyan),
-    PointOfInterest(11, "Сибирский Smoker",       gridX = 120, gridY = 450, imageRes = R.drawable.sib_smoker),
-    PointOfInterest(12, "Rostic's",               gridX = 505, gridY = 190, imageRes = R.drawable.rostics),
-    PointOfInterest(13, "Гербарий",               gridX = 520, gridY = 135, imageRes = R.drawable.gerbariy),
-    PointOfInterest(14, "Ближе",                  gridX = 540, gridY = 40,  imageRes = R.drawable.closer),
-    PointOfInterest(15, "Вечный ZOV",             gridX = 560, gridY = 65,  imageRes = R.drawable.endless_zov),
-    PointOfInterest(16, "Лампочка",               gridX = 695, gridY = 480, imageRes = R.drawable.lampochka),
-    PointOfInterest(17, "Буланже/Папа Джонс",     gridX = 640, gridY = 365, imageRes = R.drawable.father_johnes),
-    PointOfInterest(18, "Тесто",                  gridX = 595, gridY = 400, imageRes = R.drawable.testo),
-    PointOfInterest(19, "Poly Bistro",            gridX = 595, gridY = 430, imageRes = R.drawable.poly_bistro),
-    PointOfInterest(20, "Panda Jui",              gridX = 595, gridY = 445, imageRes = R.drawable.panda_jui),
-    PointOfInterest(21, "Rebro",                  gridX = 595, gridY = 470, imageRes = R.drawable.rebro),
-    PointOfInterest(22, "Минутка",                gridX = 365, gridY = 175, imageRes = R.drawable.minutka),
-    PointOfInterest(23, "Научка",                 gridX = 440, gridY = 270, imageRes = R.drawable.nauchka),
-    PointOfInterest(24, "Колобок",                gridX = 650, gridY = 480, imageRes = R.drawable.kolobok),
-    PointOfInterest(25, "Белка кофе",             gridX = 475, gridY = 65, imageRes = R.drawable.belka_coffee),
-    PointOfInterest(26, "Пешком постою",          gridX = 595, gridY = 460, imageRes = R.drawable.stand_on_foot),
-    PointOfInterest(27, "Пеки, Лола!",            gridX = 625, gridY = 50, imageRes = R.drawable.bake_lola),
-    PointOfInterest(28, "Подкова",                gridX = 105, gridY = 110, imageRes = R.drawable.podkova),
-    PointOfInterest(29, "Ярче на Советской",      gridX = 585, gridY = 50, imageRes = R.drawable.yarche_sovetsk),
-    PointOfInterest(30, "Ярче на Кирова",         gridX = 620, gridY = 365, imageRes = R.drawable.yarche_kirova)
-)
-
-fun findPoiByCsvRecommendation(recommendation: String): PointOfInterest? {
-    val slugToId = mapOf(
-        "siberian_pancakes" to 3,
-        "stolovaya_100" to 4,
-        "starbooks" to 6,
-        "bezumno_shaurma" to 7,
-        "batina_shaurma" to 5,
-        "lampochka" to 16,
-        "rostiks" to 12,
-        "panda_juice" to 20,
-        "testo_pastry" to 18,
-        "vechniy_zov" to 15,
-        "rebro_grill" to 21,
-        "poly_bistro" to 19,
-        "herbarium" to 13,
-        "blizhe" to 14,
-        "second_corps_canteen" to 2,
-        "syr_bor" to 1
-    )
-
-    val poiId = slugToId[recommendation.lowercase().trim()]
-    return pointsOfInterest.find { it.id == poiId }
-}
-
-fun findTappedPoi(
-    tapX: Float,
-    tapY: Float,
-    pois: List<PointOfInterest>,
-    camera: MapCamera,
-    hitRadiusPx: Float = 48f
-): PointOfInterest? {
-    return pois.firstOrNull { poi ->
-        val sx = (poi.gridX * camera.scale * camera.cellSize + camera.offsetX)
-        val sy = (poi.gridY * camera.scale * camera.cellSize + camera.offsetY)
-        val dx = tapX - sx
-        val dy = tapY - sy
-        sqrt(dx * dx + dy * dy) <= hitRadiusPx
-    }
-}
-
-fun findTappedAttraction(
-    tapX: Float,
-    tapY: Float,
-    attractions: List<Attraction>,
-    camera: MapCamera,
-    hitRadiusPx: Float = 48f
-): Attraction? {
-    return attractions.firstOrNull { attraction ->
-        val sx = attraction.gridX * camera.scale * camera.cellSize + camera.offsetX
-        val sy = attraction.gridY * camera.scale * camera.cellSize + camera.offsetY
-        val dx = tapX - sx
-        val dy = tapY - sy
-        sqrt(dx * dx + dy * dy) <= hitRadiusPx
-    }
-}
 
 @Composable
-fun DrawPoiMarkers(
-    pois: List<PointOfInterest>,
-    selectedPoi: PointOfInterest?,
-    onPoiClick: (PointOfInterest) -> Unit
-) {
-    val camera = LocalMapCamera.current
-
-    pois.forEach { poi ->
-        val isSelected = poi.id == selectedPoi?.id
-        PoiMarker(
-            poi = poi,
-            camera = camera,
-            isSelected = isSelected,
-            onClick = { onPoiClick(poi) }
-        )
-    }
-}
-
-@Composable
-private fun PoiMarker(
-    poi: PointOfInterest,
-    camera: MapCamera,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    var size by remember { mutableStateOf(IntSize.Zero) }
-    val iconSizeDp = if (isSelected) 22.dp else 20.dp
-
-    Box(
-        modifier = Modifier
-            .offset {
-                IntOffset(
-                    x = camera.toScreenX(poi.gridX) - size.width / 2,
-                    y = camera.toScreenY(poi.gridY) - size.height / 2
-                )
-            }
-            .onSizeChanged { size = it }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.point_of_interest),
-            contentDescription = poi.title,
-            modifier = Modifier.size(iconSizeDp)
-        )
-    }
-}
-
-@Composable
-fun PoiPopup(
-    poi: PointOfInterest?,
+fun AttractionPopup(
+    attraction: Attraction?,
     isWaitingForStartPoint: Boolean,
     onBuildRouteClick: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    nnWeightsPath: String? = null
 ) {
-    val context = LocalContext.current
-    val weightsPath = remember { getWeightsFilePath(context) }
-
     AnimatedVisibility(
-        visible = poi != null,
+        visible = attraction != null,
         enter = fadeIn() + scaleIn(initialScale = 0.85f),
         exit  = fadeOut() + scaleOut(targetScale = 0.85f)
     ) {
-        if (poi == null) return@AnimatedVisibility
+        if (attraction == null) return@AnimatedVisibility
 
         val context = LocalContext.current
         val camera  = LocalMapCamera.current
         val tsuBlue = Color(standardTSUColor.toColorInt())
 
-        var currentRating by remember(poi.id) {
-            mutableIntStateOf(RatingStore.getPoiRating(context, poi.id))
+        var currentRating by remember(attraction.id) {
+            mutableIntStateOf(RatingStore.getAttractionRating(context, attraction.id))
         }
-        var showRatingDialog by remember(poi.id) { mutableStateOf(false) }
+        var showRatingDialog by remember(attraction.id) { mutableStateOf(false) }
 
-        val screenX = camera.toScreenX(poi.gridX)
-        val screenY = camera.toScreenY(poi.gridY)
+        val screenX = camera.toScreenX(attraction.gridX)
+        val screenY = camera.toScreenY(attraction.gridY)
 
         var cardSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -255,8 +101,8 @@ fun PoiPopup(
                 Column(modifier = Modifier.padding(10.dp)) {
 
                     Image(
-                        painter = painterResource(id = poi.imageRes),
-                        contentDescription = poi.title,
+                        painter = painterResource(id = attraction.icon),
+                        contentDescription = attraction.title,
                         modifier = Modifier
                             .width(240.dp)
                             .height(110.dp)
@@ -273,7 +119,7 @@ fun PoiPopup(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = poi.title,
+                                text = attraction.title,
                                 style = TextStyle(
                                     fontSize = 15.sp,
                                     lineHeight = 14.sp,
@@ -400,32 +246,13 @@ fun PoiPopup(
 
         RatingDialog(
             visible = showRatingDialog,
-            weightsFile = weightsPath,
+            weightsFile = nnWeightsPath,
             onDismiss = { showRatingDialog = false },
             onRatingConfirmed = { rating ->
-                RatingStore.setPoiRating(context, poi.id, rating)
+                RatingStore.setAttractionRating(context, attraction.id, rating)
                 currentRating    = rating
                 showRatingDialog = false
             }
         )
     }
-}
-
-fun getWeightsFilePath(context: Context): String? {
-    val fileName = "data_for_nn.json"
-    val file = File(context.filesDir, fileName)
-
-    if (!file.exists()) {
-        try {
-            context.assets.open(fileName).use { input ->
-                file.outputStream().use { output ->
-                    input.copyTo(output)
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            return null
-        }
-    }
-    return file.absolutePath
 }

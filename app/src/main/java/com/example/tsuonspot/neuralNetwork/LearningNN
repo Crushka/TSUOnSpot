@@ -1,0 +1,178 @@
+Обучение сети проводилось в Python:<
+******************************************
+utils.py:
+
+import numpy as np
+import os
+
+def resize_mnist_to_50x50(images):
+    num_images = images.shape[0]
+    resized_images = np.zeros((num_images, 50, 50), dtype=np.uint8)
+    for i in range(num_images):
+        img = images[i]
+        rows = [r for r in range(img.shape[0]) if any(img[r, c] > 0 for c in range(img.shape[1]))]
+        cols = [c for c in range(img.shape[1]) if any(img[r, c] > 0 for r in range(img.shape[0]))]
+        if len(rows) == 0:
+            continue
+
+        min_row, max_row = rows.min(), rows.max()
+        min_col, max_col = cols.min(), cols.max()
+        digit = img[min_row:max_row + 1, min_col:max_col + 1]
+        target_size = 40
+        h, w = digit.shape
+        scale = target_size / max(h, w)
+        new_h = int(h * scale)
+        new_w = int(w * scale)
+        scaled = np.zeros((new_h, new_w), dtype=np.uint8)
+        for y in range(new_h):
+            for x in range(new_w):
+                orig_y = int(y / scale)
+                orig_x = int(x / scale)
+                if orig_y < h and orig_x < w:
+                    scaled[y, x] = digit[orig_y, orig_x]
+        y_offset = (50 - new_h) // 2
+        x_offset = (50 - new_w) // 2
+        resized_images[i, y_offset:y_offset + new_h, x_offset:x_offset + new_w] = scaled
+    return resized_images
+
+
+def prepare_and_save_dataset(save_file='mnist_50x50.npz'):
+    if os.path.exists(save_file):
+        with np.load(save_file) as f:
+            x_train = f['x_train']
+            y_train = f['y_train']
+        return x_train, y_train
+
+    with np.load("mnist.npz") as f:
+        x_train = f['x_train']
+        y_train = f['y_train']
+
+    x_train = resize_mnist_to_50x50(x_train)
+
+    np.savez_compressed(save_file, x_train=x_train, y_train=y_train)
+
+    return x_train, y_train
+
+def one_hot(label, num_classes=10):
+    result = [0.0] * num_classes
+    result[label] = 1.0
+    return result
+
+def load_dataset():
+    x_train, y_train = prepare_and_save_dataset()
+
+    x_train = x_train.astype("float32") / 255
+    x_train = x_train.reshape(x_train.shape[0], -1)
+    y_train = [one_hot(label) for label in y_train]
+    return x_train, y_train
+
+
+****************************************************
+learningNN.py:
+
+import numpy as np
+import json
+import utils
+
+
+def sigmoid(A):
+    return 1 / (1 + np.exp(-A))
+def mse_loss(output, label):
+    n = len(output)
+    return sum((output[i][0] - label[i][0]) ** 2 for i in range(n)) / n
+
+
+def LearningNN():
+    images,labels = utils.load_dataset()
+
+    # weights_input_to_hidden = np.random.uniform(-0.5, 0.5,(150,2500))
+    # weights_hidden_to_output= np.random.uniform(-0.5, 0.5,(10,150))
+    #
+    # bias_input_to_hidden  = [[0.0] for i in range(150)]
+    # bias_hidden_to_output = [[0.0] for i in range(10)]
+    bias_input_to_hidden, bias_hidden_to_output, weights_input_to_hidden, weights_hidden_to_output = Open("data_for_nn.json")
+
+    epochs = 40
+    e_loss = 0
+    e_correct = 0
+    learning_rate = 0.03
+
+    for epoch in range(epochs):
+        print(f"Epoch #{epoch}")
+        for image, label in zip(images, labels):
+            image = [[x] for x in image]
+            label = [[x] for x in label]
+
+            # sigmoid
+            hidden_raw = bias_input_to_hidden + weights_input_to_hidden @ image
+            hidden = sigmoid(hidden_raw)
+
+            output_raw = bias_hidden_to_output + weights_hidden_to_output @ hidden
+            output = sigmoid(output_raw)
+
+            # MSE
+            e_loss += 1 / len(output) * np.sum((output - label) ** 2, axis=0)
+            e_correct += int(np.argmax(output) == np.argmax(label))
+
+            # backpropagation(output)
+            delta_output = output - label
+            weights_hidden_to_output += -learning_rate * delta_output @ np.transpose(hidden)
+            bias_hidden_to_output += -learning_rate * delta_output
+
+            # backpropagation(hidden)
+            delta_hidden = np.transpose(weights_hidden_to_output) @ delta_output * (hidden * (1 - hidden))
+            weights_input_to_hidden += -learning_rate * delta_hidden @ np.transpose(image)
+            bias_input_to_hidden += -learning_rate * delta_hidden
+
+
+        print(f"Loss:{round((e_loss[0] / images.shape[0])*100,3)}%")
+        print(f"Accuracy:{round((e_correct / images.shape[0])*100,3)}")
+        e_loss = 0
+        e_correct = 0
+    return bias_input_to_hidden, bias_hidden_to_output, weights_input_to_hidden, weights_hidden_to_output
+
+def save(bias1, bias2, weights1,weights2, name):
+    def round_matrix(matrix):
+        return [[round(x, 5) for x in row] for row in matrix]
+    with open(name, 'w') as f:
+        f.write(json.dumps({'bias1': round_matrix(bias1), 'bias2': round_matrix(bias2),
+                            'weights1': round_matrix(weights1), 'weights2': round_matrix(weights2)}))
+
+def Open(name):
+    with (open(name, 'r') as f):
+        data = json.loads(f.read())
+        return np.array(data['bias1']), np.array(data['bias2']), np.array(data['weights1']), np.array(data['weights2'])
+
+
+
+
+**********************************************
+main.py:
+
+import numpy as np
+import matplotlib.pyplot as plt
+import learningNN
+
+
+def usingNN(bias_input_to_hidden, bias_hidden_to_output, weights_input_to_hidden, weights_hidden_to_output, img_path):
+    test_image = plt.imread(img_path, format="jpeg")
+    gray = [ [0.299 * test_image[y][x][0] + 0.587 * test_image[y][x][1] + 0.114 * test_image[y][x][2]
+              for x in range(50)] for y in range(50) ]
+
+    image = [[1 - (gray[y][x] / 255.0)] for y in range(50) for x in range(50)]
+
+    # Forward propagation
+    hidden_raw = bias_input_to_hidden + weights_input_to_hidden @ image
+    hidden = learningNN.sigmoid(hidden_raw)
+
+    output_raw = bias_hidden_to_output + weights_hidden_to_output @ hidden
+    output = learningNN.sigmoid(output_raw)
+    return output
+if __name__ == '__main__':
+    json_file_name = 'data_for_nn.json'
+    img_path = 'N.jpg'
+    # bias1, bias2, weights1, weights2 = learningNN.LearningNN()
+    # learningNN.save(bias1, bias2, weights1, weights2, json_file_name)
+    b1,b2,w1,w2 = learningNN.Open(json_file_name)
+    result=usingNN(b1,b2,w1,w2,img_path)
+    print(f"NN suggests the CUSTOM number is: {np.argmax(result)}")

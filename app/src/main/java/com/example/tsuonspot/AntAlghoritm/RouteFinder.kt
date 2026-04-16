@@ -49,7 +49,10 @@ class RouteFinder(
     }
 
     fun fundOptimalRoute(userPos: GridCell, attractions: List<GridCell>): RouteResult {
-        val allPoints = listOf(userPos) + attractions
+        val walkableUserPos = gridAStar.findNearestWalkable(userPos.x, userPos.y)
+            ?: userPos
+
+        val allPoints = listOf(walkableUserPos) + attractions
         val nodes_ = allPoints.size
         val distMatrix = acoStar.computeMatrix(allPoints)
 

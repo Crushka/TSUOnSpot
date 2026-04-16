@@ -33,9 +33,12 @@ class HudBarSectionLogic {}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-public fun Section(
+fun Section(
     activeSection: String?,
     onDismiss: () -> Unit,
+    onEatBuildRoute: (PointOfInterest) -> Unit = {},
+    onShowZones: () -> Unit = {},
+    onBuildAttractionRoute: (List<Attraction>) -> Unit = {},
     onEatBuildRoute: (PointOfInterest) -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
@@ -49,23 +52,15 @@ public fun Section(
     if (activeSection != null) {
         ModalBottomSheet(
             onDismissRequest = { onDismiss() },
-            sheetState = rememberModalBottomSheetState(
-                skipPartiallyExpanded = true
-            ),
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = Color.Transparent,
             contentColor = Color(standardTSUColor.toColorInt()),
             dragHandle = { BottomSheetDefaults.DragHandle(color = Color.Transparent) },
             contentWindowInsets = {
-                WindowInsets(
-                    top = topGap,
-                    bottom = 0.dp
-                )
+                WindowInsets(top = topGap, bottom = 0.dp)
             }
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
+            Column(modifier = Modifier.fillMaxSize()) {
                 Card(
                     modifier = Modifier.fillMaxSize(),
                     colors = CardDefaults.cardColors(
@@ -75,8 +70,7 @@ public fun Section(
                     shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize(),
+                        modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Box(
@@ -89,11 +83,21 @@ public fun Section(
                                 )
                         )
                         when (activeSection) {
-                            "walk"    -> attractionsMenu.DrawMenu()
+                            "walk" -> attractionsMenu.DrawMenu(
+                                onAttractionClick = {},
+                                onBuildRoute = { selected ->
+                                    onBuildAttractionRoute(selected)
+                                    onDismiss()
+                                }
+                            )
                             "route"   -> Text("Секция Маршрут", Modifier.padding(10.dp))
                             "eat"     -> DrawEatMenu(
                                 onBuildRoute = { poi ->
                                     onEatBuildRoute(poi)
+                                    onDismiss()
+                                },
+                                onShowZones = {
+                                    onShowZones()
                                     onDismiss()
                                 },
                                 onFilterClick = {showFilterSheet = true}
