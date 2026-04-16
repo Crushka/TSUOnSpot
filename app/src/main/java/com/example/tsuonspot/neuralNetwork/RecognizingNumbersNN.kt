@@ -1,4 +1,4 @@
-package com.example.tsuonspot
+package com.example.tsuonspot.neuralNetwork
 
 import android.graphics.BitmapFactory
 import android.graphics.Color

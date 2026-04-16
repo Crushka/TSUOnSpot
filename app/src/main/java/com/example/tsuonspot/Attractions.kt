@@ -9,5 +9,6 @@ val attractions: List<Attraction> = listOf(
     Attraction(6,  "Павшим за родину",                     icon = R.drawable.rodina, "Rodina", "attraction",          gridX = 430, gridY = 210),
     Attraction(7,  "Ботанический сад ТГУ",                 icon = R.drawable.bot_sad, "BotSad", "attraction",         gridX = 355, gridY = 340),
     Attraction(8,  "Университетское озеро",                icon = R.drawable.uni_ozero, "UnivOzero", "attraction",    gridX = 235, gridY = 245),
-    Attraction(9,  "Часы",                                 icon = R.drawable.clock, "Clock", "attraction",            gridX = 330, gridY = 315)
+    Attraction(9,  "Часы",                                 icon = R.drawable.clock, "Clock", "attraction",            gridX = 330, gridY = 315),
+    Attraction(10,  "Собака",                              icon = R.drawable.the_dog, "Dog", "attraction",            gridX = 45, gridY = 120)
 )

@@ -44,20 +44,9 @@ class AttractionsMenu {
     ) {
         val attractionsList = remember { attractions }
 
-        val coworkingsList = remember {
-            listOf(
-                Attraction(101, "Научка: Инфоцентр", R.drawable.bot_sad, "Info", "coworking"),
-                Attraction(102, "Коворкинг в 24 корпусе", R.drawable.stone, "C24", "coworking"),
-                Attraction(103, "IT-пространство", R.drawable.prof_belkin, "IT", "coworking")
-            )
-        }
-
-        var selectedTabIndex by remember { mutableIntStateOf(0) }
-        val tabs = listOf("Достопримечательности", "Коворкинги")
-
         var selectedIds by remember { mutableStateOf(setOf<Int>()) }
 
-        val currentList = if (selectedTabIndex == 0) attractionsList else coworkingsList
+        val currentList = attractionsList
         val tsuBlue = Color(standardTSUColor.toColorInt())
 
         Box(
@@ -69,33 +58,6 @@ class AttractionsMenu {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                TabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = Color.White,
-                    contentColor = tsuBlue,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                            color = tsuBlue
-                        )
-                    },
-                    divider = {}
-                ) {
-                    tabs.forEachIndexed { index, title ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { selectedTabIndex = index },
-                            text = {
-                                Text(
-                                    text = title,
-                                    fontSize = 14.sp,
-                                    fontFamily = standardTSUFont,
-                                    fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        )
-                    }
-                }
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),

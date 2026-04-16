@@ -2,7 +2,6 @@ package com.example.tsuonspot
 
 import android.app.Application
 import android.graphics.Bitmap
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -46,6 +45,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.core.graphics.toColorInt
@@ -426,6 +426,11 @@ fun MapScreen(
         cellSize = cellSize
     )
 
+    val context = LocalContext.current
+    val weightsPath = remember {
+        context.filesDir.absolutePath + "/data_for_nn.json"
+    }
+
     CompositionLocalProvider(LocalMapCamera provides camera) {
         Box(
             modifier = Modifier
@@ -478,18 +483,19 @@ fun MapScreen(
             }
             DrawToMarker(endPoint = state.endPoint)
             DrawFromMarker(startPoint = state.startPoint)
+
             PoiPopup(
                 poi = state.selectedPoi,
                 isWaitingForStartPoint = state.isWaitingForPoiStart,
                 onBuildRouteClick = { vm.onBuildRouteToPoiRequested() },
                 onDismiss = { vm.onPoiDismiss() }
             )
-
             AttractionPopup(
                 attraction = state.selectedAttraction,
                 isWaitingForStartPoint = state.isWaitingForPoiStart,
                 onBuildRouteClick = { vm.onBuildRouteToAttractionRequested() },
-                onDismiss = { vm.onAttractionDismiss() }
+                onDismiss = { vm.onAttractionDismiss() },
+                nnWeightsPath = weightsPath
             )
 
             if (!state.showClusters) {

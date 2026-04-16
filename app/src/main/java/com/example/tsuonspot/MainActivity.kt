@@ -86,7 +86,6 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.Bottom
                         ) {
-                            GeoIcon()
                             HudBar(onIconClick = { section -> activeSection = section })
                         }
                     }

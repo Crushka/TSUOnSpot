@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,6 +39,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -53,7 +55,8 @@ fun AttractionPopup(
     attraction: Attraction?,
     isWaitingForStartPoint: Boolean,
     onBuildRouteClick: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    nnWeightsPath: String? = null
 ) {
     AnimatedVisibility(
         visible = attraction != null,
@@ -62,8 +65,14 @@ fun AttractionPopup(
     ) {
         if (attraction == null) return@AnimatedVisibility
 
-        val camera = LocalMapCamera.current
+        val context = LocalContext.current
+        val camera  = LocalMapCamera.current
         val tsuBlue = Color(standardTSUColor.toColorInt())
+
+        var currentRating by remember(attraction.id) {
+            mutableIntStateOf(RatingStore.getAttractionRating(context, attraction.id))
+        }
+        var showRatingDialog by remember(attraction.id) { mutableStateOf(false) }
 
         val screenX = camera.toScreenX(attraction.gridX)
         val screenY = camera.toScreenY(attraction.gridY)
@@ -124,13 +133,18 @@ fun AttractionPopup(
                                 maxLines = 2
                             )
                             Spacer(Modifier.height(4.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                repeat(5) {
-                                    Image(
-                                        painter = painterResource(id = R.drawable.grey_star),
-                                        contentDescription = null,
-                                        modifier = Modifier.size(12.dp)
-                                    )
+
+                            if (currentRating >= 0) {
+                                RatingStars(rating = currentRating, starSize = 12)
+                            } else {
+                                Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    repeat(5) {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.grey_star),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(12.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -144,7 +158,7 @@ fun AttractionPopup(
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = ripple(color = Color.White)
-                                ) { },
+                                ) { showRatingDialog = true },
                             shape = RoundedCornerShape(10.dp),
                             colors = CardDefaults.cardColors(containerColor = Color.White),
                             border = BorderStroke(1.5.dp, tsuBlue)
@@ -229,5 +243,16 @@ fun AttractionPopup(
                 }
             }
         }
+
+        RatingDialog(
+            visible = showRatingDialog,
+            weightsFile = nnWeightsPath,
+            onDismiss = { showRatingDialog = false },
+            onRatingConfirmed = { rating ->
+                RatingStore.setAttractionRating(context, attraction.id, rating)
+                currentRating    = rating
+                showRatingDialog = false
+            }
+        )
     }
 }
