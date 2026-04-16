@@ -2,6 +2,7 @@ package com.example.tsuonspot
 
 import android.app.Application
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -47,9 +48,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.alghoritms.Data.GridCell
 import com.example.alghoritms.pathFind.GridAStar
+import com.example.tsuonspot.AntAlghoritm.RouteFinder
 
 data class MapCamera(
     val scale: Float,
@@ -80,7 +83,15 @@ data class MapState(
     val clusterMetricIsPedestrian: Boolean = false,
     val isClustering: Boolean = false,
     val showClusterInfoSheet: Boolean = false,
-    val voronoiBitmap: Bitmap? = null
+    val voronoiBitmap: Bitmap? = null,
+
+    val mapLayer: MapLayer = MapLayer.FOOD,
+    val selectedAttraction: Attraction? = null,
+
+    val acoPath: List<GridCell>? = null,
+    val acoOrderedPoints: List<GridCell>? = null,
+    val isWaitingForAttractionStart: Boolean = false,
+    val pendingAttractionRoute: List<Attraction> = emptyList()
 )
 
 class MapViewModel(application: Application) : AndroidViewModel(application) {
@@ -100,6 +111,10 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         loadMatrix()
+    }
+
+    fun setMapLayer(layer: MapLayer) {
+        _mapState.update { it.copy(mapLayer = layer) }
     }
 
     fun clearMap() {
@@ -126,6 +141,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         } ?: false
         if (clickedOnStart || clickedOnEnd) {
             clearMap()
+            clearAcoRoute()
         }
     }
 
@@ -151,6 +167,14 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         _mapState.update { it.copy(selectedPoi = null, isWaitingForPoiStart = false) }
     }
 
+    fun onAttractionClick(attraction: Attraction) {
+        _mapState.update { it.copy(selectedAttraction = attraction) }
+    }
+
+    fun onAttractionDismiss() {
+        _mapState.update { it.copy(selectedAttraction = null) }
+    }
+
     fun onBuildRouteToPoiRequested() {
         val poi = _mapState.value.selectedPoi ?: return
         _mapState.update { current ->
@@ -164,6 +188,73 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun onBuildRouteToAttractionRequested() {
+        val attraction = _mapState.value.selectedAttraction ?: return
+        _mapState.update { current ->
+            current.copy(
+                endPoint = Pair(attraction.gridX, attraction.gridY),
+                startPoint = null,
+                pathPoints = null,
+                pathError = false,
+                isWaitingForPoiStart = true
+            )
+        }
+    }
+
+    fun onBuildAttractionRoute(selected: List<Attraction>) {
+        _mapState.update {
+            it.copy(
+                isWaitingForAttractionStart = true,
+                pendingAttractionRoute = selected,
+                acoPath = null,
+                acoOrderedPoints = null,
+                startPoint = null
+            )
+        }
+    }
+
+    fun onAttractionStartPointSet(x: Float, y: Float) {
+        val current = _mapState.value
+        val gridX = ((x - current.offsetX) / (current.scale * _cellSize.value)).toInt()
+        val gridY = ((y - current.offsetY) / (current.scale * _cellSize.value)).toInt()
+        val userCell = GridCell(gridX, gridY, false)
+
+        _mapState.update { it.copy(
+            startPoint = Pair(gridX, gridY),
+            isWaitingForAttractionStart = false
+        )}
+
+        val astar = gridAStar ?: return
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.Default) {
+                try {
+                    val attractionCells = current.pendingAttractionRoute.map {
+                        GridCell(it.gridX, it.gridY, true)
+                    }
+                    val finder = RouteFinder(emptyArray(), astar)
+                    finder.fundOptimalRoute(userCell, attractionCells)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+
+            _mapState.update { it.copy(
+                acoPath = result?.fullPath,
+                acoOrderedPoints = result?.orderedPoints
+            )}
+        }
+    }
+
+    fun clearAcoRoute() {
+        _mapState.update { it.copy(
+            acoPath = null,
+            acoOrderedPoints = null,
+            startPoint = null,
+            endPoint = null,
+            pendingAttractionRoute = emptyList()
+        )}
+    }
+
     fun onMapClick(x: Float, y: Float) {
         val current = _mapState.value
         if (current.showClusters) return
@@ -174,10 +265,24 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
             offsetY = current.offsetY,
             cellSize = _cellSize.value
         )
-        val tappedPoi = findTappedPoi(x, y, pointsOfInterest, camera)
-        if (tappedPoi != null) {
-            onPoiClick(tappedPoi)
+        if (current.isWaitingForAttractionStart) {
+            onAttractionStartPointSet(x, y)
             return
+        }
+        if (current.mapLayer == MapLayer.FOOD) {
+            val tappedPoi = findTappedPoi(x, y, pointsOfInterest, camera)
+            if (tappedPoi != null) {
+                onPoiClick(tappedPoi)
+                return
+            }
+        }
+
+        if (current.mapLayer == MapLayer.ATTRACTIONS) {
+            val tappedAttraction = findTappedAttraction(x, y, attractions, camera)
+            if (tappedAttraction != null) {
+                onAttractionClick(tappedAttraction)
+                return
+            }
         }
 
         if (current.isWaitingForPoiStart && current.endPoint != null) {
@@ -354,11 +459,23 @@ fun MapScreen(
             }
 
             DrawWay(pathPoints = state.pathPoints)
-            DrawPoiMarkers(
-                pois = pointsOfInterest,
-                selectedPoi = state.selectedPoi,
-                onPoiClick = { vm.onPoiClick(it) }
-            )
+            DrawWay(pathPoints = state.acoPath ?: state.pathPoints)
+            if (state.isWaitingForAttractionStart) {
+                WaitingForStartHint()
+            }
+            if (state.mapLayer == MapLayer.FOOD) {
+                DrawPoiMarkers(
+                    pois = pointsOfInterest,
+                    selectedPoi = state.selectedPoi,
+                    onPoiClick = { vm.onPoiClick(it) }
+                )
+            }
+            if (state.mapLayer == MapLayer.ATTRACTIONS) {
+                DrawAttractionMarkers(
+                    attractions = attractions,
+                    onAttractionClick = { vm.onAttractionClick(it) }
+                )
+            }
             DrawToMarker(endPoint = state.endPoint)
             DrawFromMarker(startPoint = state.startPoint)
             PoiPopup(
@@ -366,6 +483,13 @@ fun MapScreen(
                 isWaitingForStartPoint = state.isWaitingForPoiStart,
                 onBuildRouteClick = { vm.onBuildRouteToPoiRequested() },
                 onDismiss = { vm.onPoiDismiss() }
+            )
+
+            AttractionPopup(
+                attraction = state.selectedAttraction,
+                isWaitingForStartPoint = state.isWaitingForPoiStart,
+                onBuildRouteClick = { vm.onBuildRouteToAttractionRequested() },
+                onDismiss = { vm.onAttractionDismiss() }
             )
 
             if (!state.showClusters) {
@@ -423,7 +547,7 @@ fun DrawMap() {
 @Composable
 fun DrawWay(
     pathPoints: List<GridCell>?,
-    pathColor: Color = Color(0xFF0072BC),
+    pathColor: Color = Color(standardTSUColor.toColorInt()),
     strokeWidthDp: Float = 4f
 ) {
     if (pathPoints == null || pathPoints.size < 2) return

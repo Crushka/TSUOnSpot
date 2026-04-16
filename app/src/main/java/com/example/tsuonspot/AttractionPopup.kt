@@ -35,10 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.painterResource
@@ -50,143 +47,26 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
-import kotlin.math.sqrt
-
-data class PointOfInterest(
-    val id: Int,
-    val title: String,
-    val gridX: Int,
-    val gridY: Int,
-    val imageRes: Int
-)
-
-val pointsOfInterest = listOf(
-    PointOfInterest(1, "Сыр-Бор",                 gridX = 340, gridY = 95,  imageRes = R.drawable.cheese_bor),
-    PointOfInterest(2, "Кофейня во 2-ом корпусе", gridX = 310, gridY = 220, imageRes = R.drawable.cafe_2nd_building),
-    PointOfInterest(3, "Сибирские блины",         gridX = 355, gridY = 180, imageRes = R.drawable.sib_blini),
-    PointOfInterest(4, "Столовая ТГУ",            gridX = 365, gridY = 165, imageRes = R.drawable.cafeteria_tsu),
-    PointOfInterest(5, "Батина шаурма",           gridX = 185, gridY = 70, imageRes = R.drawable.batina_shaurma),
-    PointOfInterest(6, "StarBooks",               gridX = 335, gridY = 165, imageRes = R.drawable.star_books),
-    PointOfInterest(7, "Безумно. Крутая шаурма",  gridX = 180, gridY = 55, imageRes = R.drawable.bezumno),
-    PointOfInterest(8, "Мясной бульвар",          gridX = 145, gridY = 310, imageRes = R.drawable.meat_boulevar),
-    PointOfInterest(9, "Шашлычный дом",           gridX = 150, gridY = 465, imageRes = R.drawable.shashl_house),
-    PointOfInterest(10, "Цзисян",                 gridX = 155, gridY = 200, imageRes = R.drawable.chzisyan),
-    PointOfInterest(11, "Сибирский Smoker",       gridX = 120, gridY = 450, imageRes = R.drawable.sib_smoker),
-    PointOfInterest(12, "Rostic's",               gridX = 505, gridY = 190, imageRes = R.drawable.rostics),
-    PointOfInterest(13, "Гербарий",               gridX = 520, gridY = 135, imageRes = R.drawable.gerbariy),
-    PointOfInterest(14, "Ближе",                  gridX = 540, gridY = 40, imageRes = R.drawable.closer),
-    PointOfInterest(15, "Вечный ZOV",             gridX = 560, gridY = 65, imageRes = R.drawable.endless_zov),
-    PointOfInterest(16, "Лампочка",               gridX = 695, gridY = 480, imageRes = R.drawable.lampochka),
-    PointOfInterest(17, "Буланже/Папа Джонс",     gridX = 640, gridY = 365, imageRes = R.drawable.father_johnes),
-    PointOfInterest(18, "Тесто",                  gridX = 595, gridY = 400, imageRes = R.drawable.testo),
-    PointOfInterest(19, "Poly Bistro",            gridX = 595, gridY = 430, imageRes = R.drawable.poly_bistro),
-    PointOfInterest(20, "Panda Jui",              gridX = 595, gridY = 450, imageRes = R.drawable.panda_jui),
-    PointOfInterest(21, "Rebro",                  gridX = 595, gridY = 470, imageRes = R.drawable.rebro)
-)
-
-fun findTappedPoi(
-    tapX: Float,
-    tapY: Float,
-    pois: List<PointOfInterest>,
-    camera: MapCamera,
-    hitRadiusPx: Float = 48f
-): PointOfInterest? {
-    return pois.firstOrNull { poi ->
-        val sx = (poi.gridX * camera.scale * camera.cellSize + camera.offsetX)
-        val sy = (poi.gridY * camera.scale * camera.cellSize + camera.offsetY)
-        val dx = tapX - sx
-        val dy = tapY - sy
-        sqrt(dx * dx + dy * dy) <= hitRadiusPx
-    }
-}
-
-fun findTappedAttraction(
-    tapX: Float,
-    tapY: Float,
-    attractions: List<Attraction>,
-    camera: MapCamera,
-    hitRadiusPx: Float = 48f
-): Attraction? {
-    return attractions.firstOrNull { attraction ->
-        val sx = attraction.gridX * camera.scale * camera.cellSize + camera.offsetX
-        val sy = attraction.gridY * camera.scale * camera.cellSize + camera.offsetY
-        val dx = tapX - sx
-        val dy = tapY - sy
-        sqrt(dx * dx + dy * dy) <= hitRadiusPx
-    }
-}
 
 @Composable
-fun DrawPoiMarkers(
-    pois: List<PointOfInterest>,
-    selectedPoi: PointOfInterest?,
-    onPoiClick: (PointOfInterest) -> Unit
-) {
-    val camera = LocalMapCamera.current
-
-    pois.forEach { poi ->
-        val isSelected = poi.id == selectedPoi?.id
-        PoiMarker(
-            poi = poi,
-            camera = camera,
-            isSelected = isSelected,
-            onClick = { onPoiClick(poi) }
-        )
-    }
-}
-
-@Composable
-private fun PoiMarker(
-    poi: PointOfInterest,
-    camera: MapCamera,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    var size by remember { mutableStateOf(IntSize.Zero) }
-    val iconSizeDp = if (isSelected) 22.dp else 20.dp
-
-    Box(
-        modifier = Modifier
-            .offset {
-                IntOffset(
-                    x = camera.toScreenX(poi.gridX) - size.width / 2,
-                    y = camera.toScreenY(poi.gridY) - size.height / 2
-                )
-            }
-            .onSizeChanged { size = it }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.point_of_interest),
-            contentDescription = poi.title,
-            modifier = Modifier.size(iconSizeDp)
-        )
-    }
-}
-
-@Composable
-fun PoiPopup(
-    poi: PointOfInterest?,
+fun AttractionPopup(
+    attraction: Attraction?,
     isWaitingForStartPoint: Boolean,
     onBuildRouteClick: () -> Unit,
     onDismiss: () -> Unit
 ) {
     AnimatedVisibility(
-        visible = poi != null,
+        visible = attraction != null,
         enter = fadeIn() + scaleIn(initialScale = 0.85f),
         exit  = fadeOut() + scaleOut(targetScale = 0.85f)
     ) {
-        if (poi == null) return@AnimatedVisibility
+        if (attraction == null) return@AnimatedVisibility
 
         val camera = LocalMapCamera.current
         val tsuBlue = Color(standardTSUColor.toColorInt())
 
-        val screenX = camera.toScreenX(poi.gridX)
-        val screenY = camera.toScreenY(poi.gridY)
+        val screenX = camera.toScreenX(attraction.gridX)
+        val screenY = camera.toScreenY(attraction.gridY)
 
         var cardSize by remember { mutableStateOf(IntSize.Zero) }
 
@@ -212,8 +92,8 @@ fun PoiPopup(
                 Column(modifier = Modifier.padding(10.dp)) {
 
                     Image(
-                        painter = painterResource(id = poi.imageRes),
-                        contentDescription = poi.title,
+                        painter = painterResource(id = attraction.icon),
+                        contentDescription = attraction.title,
                         modifier = Modifier
                             .width(240.dp)
                             .height(110.dp)
@@ -230,7 +110,7 @@ fun PoiPopup(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = poi.title,
+                                text = attraction.title,
                                 style = TextStyle(
                                     fontSize = 15.sp,
                                     lineHeight = 14.sp,

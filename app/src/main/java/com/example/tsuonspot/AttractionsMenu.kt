@@ -20,35 +20,29 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
 
-class AttractionsMenu {
-    data class Attraction(
-        val id: Int,
-        val title: String,
-        val icon: Int,
-        val description: String,
-        val type: String
-    )
+data class Attraction(
+    val id: Int,
+    val title: String,
+    val icon: Int,
+    val description: String,
+    val type: String,
+    val gridX: Int = 0,
+    val gridY: Int = 0
+)
 
+class AttractionsMenu {
     @Composable
     fun DrawMenu(
-        onAttractionClick: (Attraction) -> Unit = {}
+        onAttractionClick: (Attraction) -> Unit = {},
+        onBuildRoute: (List<Attraction>) -> Unit = {}
     ) {
-        val attractionsList = remember {
-            listOf(
-                Attraction(1, "Камень - символ геофизического центра Евразии", R.drawable.stone, "Stone", "attraction"),
-                Attraction(2, "Профессорам В.М. Флоринскому и Д.И. Менделееву", R.drawable.flor_mend, "FlorMend", "attraction"),
-                Attraction(3, "Каменные бабы", R.drawable.stone_babas, "StoneBabas", "attraction"),
-                Attraction(4, "Профессор Белкин", R.drawable.prof_belkin, "ProfBelk", "attraction"),
-                Attraction(5, "Г.Н. Потанин", R.drawable.potanin, "Potanin", "attraction"),
-                Attraction(6, "Павшим за родину", R.drawable.rodina, "Rodina", "attraction"),
-                Attraction(7, "Ботанический сад ТГУ", R.drawable.bot_sad, "BotSad", "attraction")
-            )
-        }
+        val attractionsList = remember { attractions }
 
         val coworkingsList = remember {
             listOf(
@@ -156,7 +150,11 @@ class AttractionsMenu {
                     modifier = Modifier
                         .padding(end = 20.dp)
                         .height(60.dp)
-                        .weight(1f),
+                        .weight(1f)
+                        .clickable {
+                            val selected = currentList.filter { it.id in selectedIds }
+                            if (selected.isNotEmpty()) onBuildRoute(selected)
+                        },
                     shape = RoundedCornerShape(20.dp),
                     elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
                     colors = CardDefaults.cardColors(containerColor = tsuBlue)
@@ -264,6 +262,33 @@ class AttractionsMenu {
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun WaitingForStartHint() {
+    val tsuBlue = Color(standardTSUColor.toColorInt())
+    Box(
+        modifier = Modifier.fillMaxSize().statusBarsPadding(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Card(
+            modifier = Modifier
+                .width(200.dp),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = tsuBlue)
+        ) {
+            Text(
+                text = "Нажмите на карту, чтобы выбрать точку старта",
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                color = Color.White,
+                fontFamily = standardTSUFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

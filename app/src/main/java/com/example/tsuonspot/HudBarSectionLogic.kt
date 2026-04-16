@@ -33,7 +33,8 @@ fun Section(
     activeSection: String?,
     onDismiss: () -> Unit,
     onEatBuildRoute: (PointOfInterest) -> Unit = {},
-    onShowZones: () -> Unit = {}
+    onShowZones: () -> Unit = {},
+    onBuildAttractionRoute: (List<Attraction>) -> Unit = {}
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
@@ -75,7 +76,13 @@ fun Section(
                                 )
                         )
                         when (activeSection) {
-                            "walk"    -> attractionsMenu.DrawMenu()
+                            "walk" -> attractionsMenu.DrawMenu(
+                                onAttractionClick = {},
+                                onBuildRoute = { selected ->
+                                    onBuildAttractionRoute(selected)
+                                    onDismiss()
+                                }
+                            )
                             "route"   -> Text("Секция Маршрут", Modifier.padding(10.dp))
                             "eat"     -> DrawEatMenu(
                                 onBuildRoute = { poi ->

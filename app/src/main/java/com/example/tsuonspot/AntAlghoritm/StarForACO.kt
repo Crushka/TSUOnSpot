@@ -19,10 +19,16 @@ class StarForACO(private val gridAStar: GridAStar) {
     }
 
     fun calculateAStarDistance(from: GridCell, to: GridCell): Double {
-        val start = if (from.isWalkable) from else gridAStar.findNearestWalkable(from.x, from.y) ?: from
-        val end = if (to.isWalkable) to else gridAStar.findNearestWalkable(to.x, to.y) ?: to
+        return try {
+            val start = if (from.isWalkable) from
+            else gridAStar.findNearestWalkable(from.x, from.y) ?: return Double.MAX_VALUE / 2
+            val end   = if (to.isWalkable) to
+            else gridAStar.findNearestWalkable(to.x, to.y) ?: return Double.MAX_VALUE / 2
 
-        val (temp, cost) = gridAStar.findPath(start, end)
-        return cost
+            val (_, cost) = gridAStar.findPath(start, end)
+            cost
+        } catch (e: IllegalArgumentException) {
+            Double.MAX_VALUE / 2
+        }
     }
 }

@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,6 +70,18 @@ class MainActivity : ComponentActivity() {
                     }
 
                     if (!mapState.showClusters) {
+                        Box(
+                            modifier = Modifier
+                                .statusBarsPadding()
+                                .fillMaxSize()
+                                .padding(end = 16.dp),
+                            contentAlignment = Alignment.TopEnd
+                        ) {
+                            MapLayerToggleButton(
+                                currentLayer = mapState.mapLayer,
+                                onLayerChange = { mapViewModel.setMapLayer(it) }
+                            )
+                        }
                         Column(
                             modifier = Modifier.fillMaxSize(),
                             verticalArrangement = Arrangement.Bottom
@@ -89,6 +102,9 @@ class MainActivity : ComponentActivity() {
                         onShowZones = {
                             activeSection = null
                             mapViewModel.enterClusterMode()
+                        },
+                        onBuildAttractionRoute = { selected ->
+                            mapViewModel.onBuildAttractionRoute(selected)
                         }
                     )
                 }
