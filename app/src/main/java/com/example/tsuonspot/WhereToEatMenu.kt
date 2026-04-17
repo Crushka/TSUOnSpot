@@ -110,12 +110,11 @@ fun DrawEatMenu(
             }
 
             Card(
-                onClick = { showFilter = true },
+                onClick = { onFilterClick() },
                 modifier = Modifier
                     .padding(end = 20.dp)
                     .height(40.dp)
-                    .width(110.dp)
-                    .clickable {onFilterClick()},
+                    .width(110.dp),
                 shape = RoundedCornerShape(14.dp),
                 elevation = CardDefaults.cardElevation(defaultElevation = 13.dp),
                 colors = CardDefaults.cardColors(

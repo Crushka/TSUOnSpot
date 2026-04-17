@@ -38,7 +38,8 @@ fun Section(
     onDismiss: () -> Unit,
     onShowZones: () -> Unit = {},
     onBuildAttractionRoute: (List<Attraction>) -> Unit = {},
-    onEatBuildRoute: (PointOfInterest) -> Unit = {}
+    onEatBuildRoute: (PointOfInterest) -> Unit = {},
+
 ) {
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp

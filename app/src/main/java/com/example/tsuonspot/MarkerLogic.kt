@@ -346,10 +346,29 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     fun onTransform(panX: Float, panY: Float, zoomChange: Float) {
         _mapState.update { current ->
             val newScale = (current.scale * zoomChange).coerceIn(minScale, maxScale)
+
+            val mapWidthPx  = 722f * newScale * _cellSize.value
+            val mapHeightPx = 501f * newScale * _cellSize.value
+
+            val edgePaddingX = mapWidthPx  * 0.07f
+            val edgePaddingY = mapHeightPx * 0.2f
+
+            val rawOffsetX = current.offsetX + panX * panSpeed
+            val rawOffsetY = current.offsetY + panY * panSpeed
+
+            val clampedOffsetX = rawOffsetX.coerceIn(
+                -mapWidthPx  + edgePaddingX,
+                mapWidthPx  - edgePaddingX
+            )
+            val clampedOffsetY = rawOffsetY.coerceIn(
+                -mapHeightPx + edgePaddingY,
+                mapHeightPx - edgePaddingY
+            )
+
             current.copy(
                 scale = newScale,
-                offsetX = current.offsetX + panX * panSpeed,
-                offsetY = current.offsetY + panY * panSpeed
+                offsetX = clampedOffsetX,
+                offsetY = clampedOffsetY
             )
         }
     }
