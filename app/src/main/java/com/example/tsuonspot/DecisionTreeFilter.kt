@@ -1,7 +1,5 @@
 package com.example.tsuonspot
 
-import android.R
-import android.annotation.SuppressLint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
@@ -38,7 +36,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,13 +43,11 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
-import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -65,7 +60,6 @@ import com.example.alghoritms.Data.DecisionNode
 import com.example.alghoritms.Data.PredictionOutput
 import com.example.tsuonspot.decisionTree.CSVParser
 import com.example.tsuonspot.decisionTree.DecisionTree
-import kotlinx.coroutines.launch
 
 
 data class FilterStates(
@@ -252,20 +246,15 @@ fun ResultScreen(
     }
 }
 
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DecisionTreeFilter(
     onDismiss: () -> Unit,
     filterState: FilterStates,
     onFilterStateChange: (FilterStates) -> Unit,
-    onBackToFilter: () -> Unit,
-    onResult: (recommendation: String, path: List<String>) -> Unit
+    onResult: (recommendation: String, path: List<String>) -> Unit,
+    onBackToFilter: () -> Unit
 ) {
-    val scope = rememberCoroutineScope()
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
     val tsuBlue = Color(standardTSUColor.toColorInt())
 
     val (featureNames, dataRows) = remember {
@@ -274,32 +263,57 @@ fun DecisionTreeFilter(
 
     val decisionTree = remember {
         DecisionTree().apply {
-            fit(dataRows, featureNames)
+            fit(dataRows, featureNames, 4, 5)
         }
     }
 
-    val locations = listOf("campus_center" to "Центр Культуры", "main_building" to "Главный корпус",
-        "second_building" to "Второй Корпус")
-    val budgets = listOf("low" to "Низкий", "medium" to "Средний", "high" to "Высокий")
-    val times = listOf("short" to "От 10 до 20 минут", "medium" to "От 20 до 40 минут",
-        "high" to "Никуда не тороплюсь")
-    val foodTypes = listOf("pancakes" to "Блины", "full_meal" to "Полноценный обед", "coffee" to "Кофе",
-        "fast_food" to "Фаст-Фуд", "shaurma" to "Шаурма", "snacks" to "Снэки", "gastromarket" to "Гастромаркет",
-        "bakery" to "Пекарня", "street_food" to "Уличная еда", "asian" to "Азиатская кухня",
-        "cafe" to "Кафе", "restaurant" to "Ресторан", "bistro" to "Кафе Бистро", "grocery" to "Продуктовый магазин")
-    val queueTolerances = listOf("low" to "Нет времени", "medium" to "Могу немножко постоять",
-        "high" to "Да пусть хоть с улицы тянется")
-    val weathers = listOf("good" to "Хорошая", "bad" to "Плохая")
+    val locations = listOf(
+        "main_building" to "Главный корпус",
+        "second_building" to "Второй корпус",
+        "campus_center" to "Центр Культуры",
+        "sports_building" to "Спорт-корпус"
+    )
+    val budgets = listOf(
+        "low" to "Низкий",
+        "medium" to "Средний",
+        "high" to "Высокий"
+    )
+    val times = listOf(
+        "short" to "Мало времени",
+        "medium" to "Средне",
+        "long" to "Много времени"
+    )
+    val foodTypes = listOf(
+        "full_meal" to "Полноценный обед",
+        "bakery" to "Пекарня",
+        "pancakes" to "Блины",
+        "shaurma" to "Шаурма",
+        "coffee" to "Кофе",
+        "grocery" to "Продуктовый магазин",
+        "asian" to "Китайская/Азиатская кухня",
+        "fast_food" to "Фаст-фуд",
+        "restaurant" to "Ресторан",
+        "pizza" to "Пиццерия",
+        "grill" to "Гриль-бар",
+        "cafe" to "Кафе"
+    )
+    val queueTolerances = listOf(
+        "low" to "Малая",
+        "medium" to "Средняя"
+    )
+    val weathers = listOf(
+        "good" to "Хорошая",
+        "bad" to "Плохая"
+    )
 
     var result by remember { mutableStateOf(false) }
     var predictionOutput by remember { mutableStateOf<PredictionOutput?>(null) }
     var showTreeWindow by remember { mutableStateOf(false) }
 
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color.White,
-        sheetState = sheetState
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ) {
         if(!result) {
             LazyColumn(
@@ -423,6 +437,61 @@ fun DecisionTreeFilter(
         }
     }
 }
+
+fun getReadableName(slug: String): String {
+    val lower = slug.lowercase().trim()
+    val poi = findPoiByCsvRecommendation(lower)
+    if (poi != null) return poi.title
+
+    return when (lower) {
+        "location" -> "Локация"
+        "budget" -> "Бюджет"
+        "time_available" -> "Доступное время"
+        "food_type" -> "Тип еды"
+        "queue_tolerance" -> "Очередь"
+        "weather" -> "Погода"
+        "main_building" -> "Главный корпус"
+        "second_building" -> "Второй корпус"
+        "campus_center" -> "Центр Культуры"
+        "sports_building" -> "Спорт-корпус"
+        "low" -> "Низкий"
+        "medium" -> "Средний"
+        "high" -> "Высокий"
+        "short" -> "Мало"
+        "long" -> "Много"
+        "full_meal" -> "Обед"
+        "bakery" -> "Пекарня"
+        "pancakes" -> "Блины"
+        "shaurma" -> "Шаурма"
+        "coffee" -> "Кофе"
+        "grocery" -> "Магазин"
+        "asian" -> "Азиатская"
+        "fast_food" -> "Фаст-фуд"
+        "restaurant" -> "Ресторан"
+        "pizza" -> "Пицца"
+        "grill" -> "Гриль"
+        "cafe" -> "Кафе"
+        "good" -> "Хорошая"
+        "bad" -> "Плохая"
+
+        else -> slug.replace("_", " ").replaceFirstChar { it.uppercase() }
+    }
+}
+
+fun findActivePathNodes(root: DecisionNode?, userInput: List<String>): Set<DecisionNode> {
+    val path = mutableSetOf<DecisionNode>()
+    var current = root
+    while (current != null) {
+        path.add(current)
+        if (current.isLeaf) break
+
+        val index = current.splitAttributeIndex ?: break
+        val value = userInput.getOrNull(index)?.lowercase()?.trim() ?: ""
+        current = current.children[value]
+    }
+    return path
+}
+
 @Composable
 fun DecisionTreeVisualizer(
     root: DecisionNode?,
@@ -432,14 +501,19 @@ fun DecisionTreeVisualizer(
 ) {
     if (root == null) { onDismiss(); return }
 
-    val nodeWidth = 220f
-    val nodeHeight = 120f
-    val headerHeight = 40f
+    val nodeWidth = 260f
+    val nodeHeight = 140f
+    val headerHeight = 45f
     val tsuBlue = Color(0xFF0072BC)
+    val highlightColor = Color(0xFF4CAF50)
+    val inactiveColor = Color.LightGray
+    val verticalGap = 240f
+    val leafGap = 280f
+    val padding = 100f
 
-    val verticalGap = 220f
-    val leafGap = 250f
-    val padding = 80f
+    val activePathNodes = remember(root, userInput) {
+        findActivePathNodes(root, userInput)
+    }
 
     val layoutNodes = remember(root) {
         calculateTreeLayoutUpdated(root, nodeWidth, leafGap, verticalGap)
@@ -461,7 +535,7 @@ fun DecisionTreeVisualizer(
                     .align(Alignment.TopEnd)
                     .padding(16.dp)
             ) {
-                Text("ЗАКРЫТЬ", color = tsuBlue, fontWeight = FontWeight.Bold)
+                Text("ЗАКРЫТЬ", color = tsuBlue, fontWeight = Bold)
             }
 
             Box(modifier = Modifier
@@ -473,14 +547,17 @@ fun DecisionTreeVisualizer(
                 .height(canvasHeight)
             ) {
                 Canvas(modifier = Modifier.matchParentSize()) {
-
                     layoutNodes.forEach { pos ->
                         pos.parent?.let { parentPos ->
+                            val isActivePath = activePathNodes.contains(pos.node) &&
+                                    activePathNodes.contains(parentPos.node)
+
                             drawLine(
-                                color = Color.Black,
-                                start = Offset(parentPos.x + padding + nodeWidth / 2, parentPos.y + padding + nodeHeight),
+                                color = if (isActivePath) highlightColor else inactiveColor,
+                                start = Offset(parentPos.x + padding + nodeWidth / 2,
+                                                parentPos.y + padding + nodeHeight),
                                 end = Offset(pos.x + padding + nodeWidth / 2, pos.y + padding),
-                                strokeWidth = 2.5f
+                                strokeWidth = if (isActivePath) 8f else 3f
                             )
                         }
                     }
@@ -489,67 +566,58 @@ fun DecisionTreeVisualizer(
                         val centerX = pos.x + padding
                         val centerY = pos.y + padding
                         val isLeaf = pos.node.isLeaf
+                        val isActive = activePathNodes.contains(pos.node)
 
-                        val headerText: String
-                        val bodyText: String
-
-                        if (isLeaf) {
-                            headerText = "Результат"
-                            bodyText = pos.node.result?.replace("_", " ") ?: ""
-                        } else {
-                            val attrIndex = pos.node.splitAttributeIndex ?: 0
-                            headerText = featureNames.getOrNull(attrIndex) ?: "Параметр"
-                            bodyText = userInput.getOrNull(attrIndex)?.replace("_", " ") ?: "Не выбрано"
-                        }
+                        val headerText = if (isLeaf) "Рекомендуем:"
+                        else getReadableName(featureNames.getOrNull(pos.node.splitAttributeIndex ?: 0) ?: "")
+                        val bodyText = getReadableName(
+                            if (isLeaf) pos.node.result ?: ""
+                            else userInput.getOrNull(pos.node.splitAttributeIndex ?: 0) ?: ""
+                        )
 
                         drawRoundRect(
                             color = Color.White,
                             topLeft = Offset(centerX, centerY),
                             size = Size(nodeWidth, nodeHeight),
-                            cornerRadius = CornerRadius(12f, 12f)
+                            cornerRadius = CornerRadius(15f, 15f)
                         )
 
                         drawRoundRect(
-                            color = Color.Black,
+                            color = if (isActive) highlightColor else inactiveColor,
                             topLeft = Offset(centerX, centerY),
                             size = Size(nodeWidth, nodeHeight),
-                            cornerRadius = CornerRadius(12f, 12f),
-                            style = Stroke(width = 2.5f)
-                        )
-
-                        drawLine(
-                            color = Color.Black,
-                            start = Offset(centerX, centerY + headerHeight),
-                            end = Offset(centerX + nodeWidth, centerY + headerHeight),
-                            strokeWidth = 2.5f
+                            cornerRadius = CornerRadius(15f, 15f),
+                            style = Stroke(width = if (isActive) 6f else 2f)
                         )
 
                         val measuredHeader = textMeasurer.measure(
-                            headerText.replaceFirstChar { it.uppercase() },
-                            TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Normal, color = Color.Black)
+                            text = headerText,
+                            style = TextStyle(fontSize = 11.sp, color = Color.Gray)
                         )
                         drawText(
-                            measuredHeader,
-                            topLeft = Offset(centerX + 15f, centerY + (headerHeight - measuredHeader.size.height) / 2)
+                            textLayoutResult = measuredHeader,
+                            topLeft = Offset(centerX + 15f, centerY + 10f)
                         )
+
+                        val fontSize = if (bodyText.length > 20) 12.sp else 15.sp
 
                         val measuredBody = textMeasurer.measure(
-                            bodyText.replaceFirstChar { it.uppercase() },
-                            TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
+                            text = bodyText,
+                            style = TextStyle(
+                                fontSize = fontSize,
+                                fontWeight = Bold,
                                 textAlign = TextAlign.Center,
-                                color = if (isLeaf) tsuBlue else Color.Black
+                                color = if (isActive) (if (isLeaf) tsuBlue else Color.Black) else inactiveColor
                             ),
-                            constraints = androidx.compose.ui.unit.Constraints(maxWidth = (nodeWidth - 20).toInt())
+                            constraints = androidx.compose.ui.unit.Constraints(maxWidth = (nodeWidth - 30).toInt())
                         )
 
+                        val bodyX = centerX + (nodeWidth - measuredBody.size.width) / 2
+                        val bodyY = centerY + headerHeight + (nodeHeight - headerHeight - measuredBody.size.height) / 2
+
                         drawText(
-                            measuredBody,
-                            topLeft = Offset(
-                                centerX + (nodeWidth - measuredBody.size.width) / 2,
-                                centerY + headerHeight + (nodeHeight - headerHeight - measuredBody.size.height) / 2
-                            )
+                            textLayoutResult = measuredBody,
+                            topLeft = Offset(bodyX, bodyY)
                         )
                     }
                 }

@@ -33,7 +33,7 @@ data class DecisionNode(
     val result: String? = null,
     val classDistribution : Map<String, Int> = emptyMap(),
     val splitAttributeIndex: Int? = null,
-    val children: Map<String, DecisionNode> = emptyMap()
+    val children: Map<String, DecisionNode> = emptyMap(),
 )
 
 data class PredictionResult(
@@ -73,57 +73,78 @@ data class GridEdge(
 data object CSVData {
     val data: String = """
         location,budget,time_available,food_type,queue_tolerance,weather,recommended_place
+        second_building,low,short,full_meal,medium,good,syr_bor
+        second_building,low,medium,full_meal,medium,bad,syr_bor
+        second_building,medium,short,bakery,low,bad,second_corps_canteen
         campus_center,low,short,pancakes,medium,good,siberian_pancakes
-        campus_center,low,short,pancakes,low,bad,siberian_pancakes
-        campus_center,low,medium,soup,medium,good,stolovaya_100
-        campus_center,low,short,soup,low,bad,stolovaya_100
-        campus_center,medium,short,full_meal,medium,good,cafe_minutka
-        campus_center,medium,medium,full_meal,low,good,cafe_minutka
-        campus_center,medium,medium,coffee,medium,good,starbooks
-        campus_center,medium,short,coffee,low,good,starbooks
-        campus_center,low,short,fast_food,medium,good,bezumno_shaurma
-        campus_center,low,short,fast_food,low,bad,bezumno_shaurma
-        campus_center,low,short,shaurma,low,bad,batina_shaurma
-        campus_center,low,short,shaurma,medium,good,batina_shaurma
-        campus_center,low,medium,full_meal,medium,good,nauchka
-        campus_center,low,short,snacks,low,good,kolobok
-        campus_center,low,short,snacks,medium,bad,kolobok
-        campus_center,medium,medium,gastromarket,medium,good,lampochka
-        campus_center,medium,short,gastromarket,low,good,lampochka
-        campus_center,low,short,coffee,low,good,belka_coffee
-        campus_center,low,medium,coffee,medium,bad,belka_coffee
-        campus_center,medium,short,fast_food,medium,good,rostiks
-        campus_center,medium,medium,full_meal,low,good,rostiks
-        campus_center,low,short,bakery,low,good,xo_bakery
-        campus_center,low,short,bakery,medium,bad,xo_bakery
-        campus_center,low,medium,soup,medium,good,second_corps_canteen
-        campus_center,low,short,soup,low,bad,second_corps_canteen
-        campus_center,low,short,street_food,low,good,peshkom_postoyu
-        campus_center,medium,short,asian,medium,good,panda_juice
-        campus_center,medium,medium,asian,low,good,panda_juice
-        campus_center,low,short,bakery,medium,good,testo_pastry
-        campus_center,medium,medium,bakery,low,good,testo_pastry
-        campus_center,medium,medium,bakery,high,good,peki_lola
-        campus_center,medium,short,cafe,medium,good,peki_lola
-        campus_center,medium,medium,restaurant,low,good,vechniy_zov
-        campus_center,medium,medium,restaurant,medium,bad,vechniy_zov
-        campus_center,medium,short,restaurant,low,good,rebro_grill
-        campus_center,high,medium,restaurant,low,good,poly_bistro
-        campus_center,medium,short,bistro,low,good,poly_bistro
-        campus_center,medium,medium,cafe,medium,good,herbarium
-        campus_center,medium,short,cafe,low,good,herbarium
-        campus_center,medium,medium,restaurant,medium,good,blizhe
-        campus_center,low,short,grocery,low,good,podkova
-        campus_center,low,medium,grocery,medium,bad,podkova
-        campus_center,low,short,grocery,low,good,yarche_2
-        campus_center,low,medium,grocery,low,bad,mariya_ra
-        campus_center,low,short,grocery,low,good,abrikos
-        campus_center,low,medium,grocery,medium,good,abrikos
+        campus_center,low,short,pancakes,medium,bad,siberian_pancakes
         main_building,low,short,pancakes,medium,good,siberian_pancakes
-        main_building,low,short,fast_food,low,good,bezumno_shaurma
-        main_building,low,medium,soup,medium,good,second_corps_canteen
-        main_building,low,short,coffee,low,good,belka_coffee
-        main_building,low,short,grocery,low,good,podkova
+        main_building,low,short,pancakes,medium,bad,siberian_pancakes
+        second_building,low,short,pancakes,medium,good,siberian_pancakes
+        sports_building,low,short,pancakes,medium,good,siberian_pancakes
+        campus_center,low,short,full_meal,medium,good,stolovaya_100
+        campus_center,low,short,full_meal,medium,bad,stolovaya_100
+        main_building,low,medium,full_meal,medium,good,stolovaya_100
+        main_building,low,medium,full_meal,medium,bad,stolovaya_100
+        second_building,low,short,full_meal,medium,good,stolovaya_100
+        sports_building,low,medium,full_meal,medium,good,stolovaya_100
+        second_building,low,medium,shaurma,low,good,batina_shaurma
+        second_building,low,medium,shaurma,medium,good,batina_shaurma
+        campus_center,medium,short,coffee,medium,good,starbooks
+        campus_center,medium,short,coffee,medium,bad,starbooks
+        main_building,medium,medium,coffee,medium,good,starbooks
+        main_building,medium,medium,coffee,medium,bad,starbooks
+        second_building,medium,short,coffee,medium,good,starbooks
+        sports_building,medium,medium,coffee,medium,good,starbooks
+        second_building,low,medium,shaurma,low,good,bezumno_shaurma
+        second_building,medium,medium,shaurma,medium,good,bezumno_shaurma
+        second_building,medium,medium,grill,low,good,meat_boulevard
+        second_building,medium,long,grill,medium,good,meat_boulevard
+        second_building,low,medium,grocery,low,good,mariya_ra
+        second_building,medium,medium,asian,low,good,chzisyan
+        second_building,medium,long,asian,medium,good,chzisyan
+        second_building,high,medium,full_meal,medium,good,sib_smoker
+        second_building,high,long,full_meal,medium,good,sib_smoker
+        campus_center,medium,short,fast_food,medium,good,rostics
+        main_building,medium,medium,fast_food,medium,good,rostics
+        sports_building,medium,short,fast_food,medium,good,rostics
+        campus_center,high,medium,restaurant,medium,good,herbarium
+        main_building,high,long,restaurant,medium,good,herbarium
+        sports_building,high,medium,restaurant,medium,good,herbarium
+        campus_center,high,medium,restaurant,low,good,blizhe
+        main_building,high,long,restaurant,low,good,blizhe
+        main_building,high,medium,restaurant,low,good,vechniy_zov
+        main_building,high,long,restaurant,medium,good,vechniy_zov
+        main_building,medium,long,fast_food,low,good,lampochka
+        main_building,high,long,fast_food,medium,good,lampochka
+        main_building,medium,long,pizza,medium,good,papa_johns
+        main_building,high,long,pizza,medium,good,papa_johns
+        main_building,high,medium,bakery,low,good,testo_pastry
+        main_building,high,long,bakery,low,good,testo_pastry
+        main_building,high,long,restaurant,low,good,poly_bistro
+        main_building,medium,long,asian,low,good,panda_juice
+        main_building,high,long,grill,medium,good,rebro_grill
+        main_building,medium,medium,cafe,low,good,cafe_minutka
+        main_building,medium,medium,cafe,low,bad,cafe_minutka
+        campus_center,medium,medium,cafe,medium,good,cafe_minutka
+        campus_center,medium,medium,cafe,medium,bad,cafe_minutka
+        second_building,medium,medium,cafe,medium,good,cafe_minutka
+        sports_building,medium,medium,cafe,low,good,cafe_minutka
+        main_building,low,medium,cafe,low,good,nauchka
+        campus_center,medium,medium,cafe,medium,good,nauchka
+        second_building,low,medium,cafe,low,good,nauchka
+        sports_building,medium,medium,cafe,medium,good,nauchka
+        main_building,medium,long,full_meal,medium,good,kolobok
+        main_building,medium,short,coffee,low,good,belka_coffee
+        campus_center,medium,medium,coffee,medium,good,belka_coffee
+        main_building,medium,medium,cafe,medium,good,peshkom_postoyu
+        main_building,medium,long,cafe,medium,good,peshkom_postoyu
+        main_building,high,medium,bakery,low,good,peki_lola
+        main_building,high,medium,bakery,medium,good,peki_lola
+        second_building,low,short,grocery,low,good,podkova
+        second_building,low,medium,grocery,low,good,podkova
+        main_building,low,long,grocery,medium,good,yarche_1
+        main_building,low,medium,grocery,medium,good,yarche_2
+        campus_center,low,medium,grocery,medium,good,yarche_2
     """.trimIndent()
 }
-

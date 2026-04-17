@@ -11,6 +11,8 @@ class DecisionTree {
         private set
     var featureNames: List<String> = emptyList()
         private set
+    private var maxDepth: Int = 0
+    private var minSamplesSplit: Int = 0
     private fun calculateEntropy(data: List<DataRow>): Double {
         if(data.isEmpty()) return 0.0;
 
@@ -50,52 +52,61 @@ class DecisionTree {
         return bestIndex
     }
 
-    fun fit(data: List<DataRow> , features: List<String>) {
-        featureNames = features
+    fun fit(data: List<DataRow> , features: List<String>, maxDepth: Int, minSamplesSplit:Int) {
+        this.maxDepth = maxDepth
+        this.minSamplesSplit = minSamplesSplit
+        this.featureNames = features
+
         val normalizedData = data.map { row ->
             DataRow(
                 row.features.map { it.trim().lowercase() },
                 row.label.trim().lowercase()
             )
         }
-        root = buildTree(normalizedData, features.indices.toList())
+        root = buildTree(normalizedData, features.indices.toList(), 0)
     }
 
-    fun buildTree(data: List<DataRow>, attributeIndices: List<Int> ) : DecisionNode {
+    fun buildTree(data: List<DataRow>, attributeIndices: List<Int>, currentDepth: Int ) : DecisionNode {
         val labels = data.map { it.label}.distinct()
+        val distribute = data.groupingBy { it.label }.eachCount()
+        val majority = distribute.maxByOrNull { it.value }?.key ?: "Unknown"
 
         if(labels.size == 1) {
-            val distribute = data.groupingBy { it.label }.eachCount()
             return DecisionNode(isLeaf = true, result = labels.first(), classDistribution = distribute)
         }
 
         if(attributeIndices.isEmpty() || data.isEmpty()) {
-            val distribute = data.groupingBy { it.label }.eachCount()
-            val majority = distribute.maxByOrNull { it.value }?.key ?: "Unknown"
             return DecisionNode(isLeaf = true, result = majority, classDistribution = distribute)
+        }
 
+        if(currentDepth >= maxDepth) {
+            return DecisionNode(isLeaf = true, result = majority, classDistribution = distribute)
+        }
+
+        if(data.size < minSamplesSplit) {
+            return DecisionNode(isLeaf = true, result = majority, classDistribution = distribute)
         }
 
         val bestAttrIndex = selectBestAttr(data, attributeIndices)?: attributeIndices.first()
         val values = data.map {it.features[bestAttrIndex]}.distinct()
         val children = mutableMapOf<String, DecisionNode>()
 
-        val majorityResult = data.groupingBy { it.label }.eachCount().maxByOrNull { it.value }?.key ?: "Unknown"
-
-        for(value in values) {
+        for (value in values) {
             val subset = data.filter { it.features[bestAttrIndex] == value }
             val remainingAttr = attributeIndices.filter { it != bestAttrIndex }
-            children[value] = if(subset.isEmpty()) {
-                DecisionNode(isLeaf = true, result = majorityResult)
-            }
-            else {
-                buildTree(subset, remainingAttr)
+
+            children[value] = if (subset.isEmpty()) {
+                DecisionNode(isLeaf = true, result = majority)
+            } else {
+                buildTree(subset, remainingAttr, currentDepth + 1)
             }
         }
 
-        return DecisionNode(isLeaf = false,
-                            splitAttributeIndex = bestAttrIndex,
-                            children = children
+        return DecisionNode(
+            isLeaf = false,
+            splitAttributeIndex = bestAttrIndex,
+            children = children,
+            classDistribution = distribute
         )
     }
 

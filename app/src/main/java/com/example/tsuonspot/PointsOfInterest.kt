@@ -96,26 +96,18 @@ val pointsOfInterest = listOf(
 
 fun findPoiByCsvRecommendation(recommendation: String): PointOfInterest? {
     val slugToId = mapOf(
-        "siberian_pancakes" to 3,
-        "stolovaya_100" to 4,
-        "starbooks" to 6,
-        "bezumno_shaurma" to 7,
-        "batina_shaurma" to 5,
-        "lampochka" to 16,
-        "rostiks" to 12,
-        "panda_juice" to 20,
-        "testo_pastry" to 18,
-        "vechniy_zov" to 15,
-        "rebro_grill" to 21,
-        "poly_bistro" to 19,
-        "herbarium" to 13,
-        "blizhe" to 14,
-        "second_corps_canteen" to 2,
-        "syr_bor" to 1
+        "syr_bor" to 1, "second_corps_canteen" to 2, "siberian_pancakes" to 3,
+        "stolovaya_100" to 4, "batina_shaurma" to 5, "starbooks" to 6,
+        "bezumno_shaurma" to 7, "meat_boulevard" to 8, "mariya_ra" to 9,
+        "chzisyan" to 10, "sib_smoker" to 11, "rostics" to 12,
+        "herbarium" to 13, "blizhe" to 14, "vechniy_zov" to 15,
+        "lampochka" to 16, "papa_johns" to 17, "testo_pastry" to 18,
+        "poly_bistro" to 19, "panda_juice" to 20, "rebro_grill" to 21,
+        "cafe_minutka" to 22, "nauchka" to 23, "kolobok" to 24,
+        "belka_coffee" to 25, "peshkom_postoyu" to 26, "peki_lola" to 27,
+        "podkova" to 28, "yarche_1" to 29, "yarche_2" to 30
     )
-
-    val poiId = slugToId[recommendation.lowercase().trim()]
-    return pointsOfInterest.find { it.id == poiId }
+    return pointsOfInterest.find { it.id == slugToId[recommendation.lowercase().trim()] }
 }
 
 fun findTappedPoi(
