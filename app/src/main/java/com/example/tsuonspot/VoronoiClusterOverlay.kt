@@ -142,7 +142,14 @@ suspend fun computeClusters(
         EuclidianDistance()
     }
 
-    val k = minOf(5, pois.size)
+    val maxK = minOf(8, pois.size - 1)
+    val kFinder = KMeans(
+        clustersQuantity = 2,
+        distanceMetric = metric,
+        normalize = false
+    )
+    val k = kFinder.findOptimalClusters(indexedPoints, maxK)
+
     val kMeans = KMeans(
         clustersQuantity = k,
         distanceMetric = metric,
