@@ -49,13 +49,15 @@ import androidx.core.graphics.toColorInt
 fun DrawEatMenu(
     onEatPlaceClick: (PointOfInterest) -> Unit = {},
     onBuildRoute: (PointOfInterest) -> Unit = {},
-    onShowZones: () -> Unit = {}
-    onFilterClick: () -> Unit = {}
+    onShowZones: () -> Unit,
+    onFilterClick: () -> Unit
 ) {
     val eatList = pointsOfInterest
 
     var selectedId by remember { mutableStateOf<Int?>(null) }
     var showFilter by remember { mutableStateOf(false) }
+    var filterState by remember { mutableStateOf(FilterStates()) }
+    var showResultScreen by remember { mutableStateOf(false) }
 
     val tsuBlue = Color(standardTSUColor.toColorInt())
     val hasSelection = selectedId != null
@@ -145,9 +147,16 @@ fun DrawEatMenu(
             }
             if (showFilter) {
                 DecisionTreeFilter(
-                    onDismiss = { showFilter = false },
-                    onResult = { res, path ->
-                        println("Получено: $res")
+                    onDismiss = {showFilter = false},
+                    filterState = filterState,
+                    onFilterStateChange = {newState -> filterState = newState},
+                    onBackToFilter = {showResultScreen = false},
+                    onResult = {recommendation, path ->
+                        val foundPoi = findPoiByCsvRecommendation(recommendation)
+                        if(foundPoi != null) {
+                            showFilter = false
+                            onBuildRoute(foundPoi)
+                        }
                     }
                 )
             }

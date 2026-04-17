@@ -294,13 +294,6 @@ fun DecisionTreeFilter(
     var predictionOutput by remember { mutableStateOf<PredictionOutput?>(null) }
     var showTreeWindow by remember { mutableStateOf(false) }
 
-    val closeSheet = {
-        scope.launch { sheetState.hide() }.invokeOnCompletion {
-            if (!sheetState.isVisible) {
-                onDismiss()
-            }
-        }
-    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

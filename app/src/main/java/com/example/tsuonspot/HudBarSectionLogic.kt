@@ -36,7 +36,6 @@ class HudBarSectionLogic {}
 fun Section(
     activeSection: String?,
     onDismiss: () -> Unit,
-    onEatBuildRoute: (PointOfInterest) -> Unit = {},
     onShowZones: () -> Unit = {},
     onBuildAttractionRoute: (List<Attraction>) -> Unit = {},
     onEatBuildRoute: (PointOfInterest) -> Unit = {}
