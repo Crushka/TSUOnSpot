@@ -5,14 +5,17 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -58,6 +61,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            var showInfoDialog by remember { mutableStateOf(false) }
+
             TSUOnSpotTheme {
                 var activeSection by remember { mutableStateOf<String?>(null) }
                 val mapViewModel: MapViewModel = viewModel()
@@ -81,6 +86,7 @@ class MainActivity : ComponentActivity() {
                                 currentLayer = mapState.mapLayer,
                                 onLayerChange = { mapViewModel.setMapLayer(it) }
                             )
+                            InfoButton(onClick = { showInfoDialog = true })
                         }
                         Column(
                             modifier = Modifier.fillMaxSize(),
@@ -106,6 +112,9 @@ class MainActivity : ComponentActivity() {
                             mapViewModel.onBuildAttractionRoute(selected)
                         }
                     )
+                    if (showInfoDialog) {
+                        InfoDialog(onDismiss = { showInfoDialog = false })
+                    }
                 }
             }
         }
@@ -197,38 +206,109 @@ private fun HudBar(onIconClick: (String) -> Unit) {
 }
 
 @Composable
-private fun GeoIcon() {
+private fun InfoDialog(onDismiss: () -> Unit) {
+    val tsuBlue = Color(standardTSUColor.toColorInt())
+
     Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterEnd
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { },
+        contentAlignment = Alignment.Center
     ) {
         Card(
             modifier = Modifier
-                .padding(20.dp, 10.dp)
-                .size(70.dp),
-            shape = RoundedCornerShape(60.dp),
-            elevation = CardDefaults.cardElevation(defaultElevation = 7.dp),
+                .padding(horizontal = 24.dp)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(20.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .clip(RoundedCornerShape(10.dp))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = ripple(
-                            radius = 100.dp,
-                            color = Color(standardTSUColor.toColorInt())
-                        )
-                    ) { },
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.geo_icon),
-                    contentDescription = "Geo",
+            Box(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+
+                Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .offset(x = 2.dp, y = 2.dp)
+                        .align(Alignment.TopEnd)
+                        .size(30.dp)
+                        .background(tsuBlue.copy(alpha = 0.1f), RoundedCornerShape(8.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = ripple(color = tsuBlue)
+                        ) { onDismiss() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("✕", fontSize = 14.sp, color = tsuBlue,
+                        fontFamily = standardTSUFont, fontWeight = FontWeight.Bold)
+                }
+
+                Column(modifier = Modifier.padding(end = 36.dp)) {
+                    Text(
+                        text = "О приложении",
+                        fontSize = 18.sp,
+                        fontFamily = standardTSUFont,
+                        fontWeight = FontWeight.Bold,
+                        color = tsuBlue
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Авторы:\n" +
+                                "• Слюта Егор Александрович\n" +
+                                "• Подскребышева Яна Александровна\n" +
+                                "• Бирюков Всеволод Евгеньевич",
+                        fontSize = 14.sp,
+                        fontFamily = standardTSUFont,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray,
+                        lineHeight = 20.sp
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "Как пользоваться:\n" +
+                                "• Кликните на карту в пустом месте, чтобы поставить метку направления\n" +
+                                "• Кликните в другом месте, чтобы поставить метку, откуда строить маршрут\n" +
+                                "• Двойной клик по любой из меток убирает метки и маршрут",
+                        fontSize = 14.sp,
+                        fontFamily = standardTSUFont,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoButton(onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .statusBarsPadding()
+            .fillMaxSize()
+            .padding(start = 16.dp),
+        contentAlignment = Alignment.TopStart
+    ) {
+        Card(
+            modifier = Modifier
+                .size(44.dp)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(color = Color(standardTSUColor.toColorInt()))
+                ) { onClick() },
+            shape = RoundedCornerShape(14.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(
+                    text = "i",
+                    fontSize = 22.sp,
+                    fontFamily = standardTSUFont,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(standardTSUColor.toColorInt())
                 )
             }
         }
